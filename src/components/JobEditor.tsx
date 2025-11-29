@@ -174,6 +174,7 @@ export default function JobEditor() {
              </label>
              <input
                type="text"
+               suppressHydrationWarning={true}
                className="w-full bg-white border border-slate-200 p-3 rounded-lg text-lg font-semibold text-slate-900 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
                placeholder="e.g. Senior Product Manager"
                value={title}
@@ -195,6 +196,7 @@ export default function JobEditor() {
              
              {viewMode === "edit" ? (
                <textarea
+                 suppressHydrationWarning={true}
                  className="w-full h-full p-6 resize-none focus:outline-none text-slate-700 leading-relaxed font-sans placeholder-slate-300 text-base"
                  placeholder="Paste your JD here, or click 'Template' to start with a Gold Standard structure..."
                  value={description}

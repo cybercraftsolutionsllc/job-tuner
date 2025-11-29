@@ -1,3 +1,4 @@
+import Link from "next/link"; // Import Link
 import JobEditor from "../components/JobEditor";
 
 export default function Home() {
@@ -10,8 +11,16 @@ export default function Home() {
             <span className="text-2xl">⚡</span>
             <span className="font-bold text-xl tracking-tight text-blue-700">Job Tuner</span>
           </div>
-          <div className="text-sm font-medium text-slate-500 hidden sm:block">
-            Free Compliance & Conversion Tool
+          
+          {/* UPDATED RIGHT SIDE MENU */}
+          <div className="flex items-center gap-6">
+            <Link href="/faq" className="text-sm font-medium text-slate-500 hover:text-blue-600 transition-colors">
+              How It Works
+            </Link>
+            <span className="text-sm font-medium text-slate-300">|</span>
+            <div className="text-sm font-medium text-slate-500 hidden sm:block">
+              Free Compliance Tool
+            </div>
           </div>
         </div>
       </nav>
