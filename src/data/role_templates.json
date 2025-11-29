@@ -1,0 +1,52 @@
+{
+  "general": {
+    "responsibilities": [
+      "Collaborate with cross-functional teams to define project requirements.",
+      "Maintain clear documentation of processes and workflows.",
+      "Identify opportunities for process improvement and efficiency.",
+      "Mentor junior team members and foster a collaborative culture."
+    ],
+    "benefits": [
+      "Comprehensive health, dental, and vision coverage.",
+      "401(k) matching program.",
+      "Generous paid time off and parental leave policies.",
+      "Flexible work arrangements (Remote/Hybrid)."
+    ]
+  },
+  "engineering": {
+    "keywords": ["developer", "engineer", "programmer", "architect", "data", "tech"],
+    "responsibilities": [
+      "Design and build scalable, high-performance software systems.",
+      "Participate in code reviews to ensure code quality and best practices.",
+      "Troubleshoot and resolve production issues in a timely manner.",
+      "Stay updated on emerging technologies and industry trends."
+    ]
+  },
+  "sales": {
+    "keywords": ["sales", "account", "business development", "sdr", "ae", "revenue"],
+    "responsibilities": [
+      "Prospect and qualify new leads to build a robust sales pipeline.",
+      "Conduct product demonstrations and presentations for potential clients.",
+      "Negotiate contracts and close deals to meet quarterly targets.",
+      "Maintain strong relationships with existing clients to drive renewals."
+    ]
+  },
+  "product": {
+    "keywords": ["product", "manager", "owner", "roadmap", "pm"],
+    "responsibilities": [
+      "Define the product vision, strategy, and roadmap.",
+      "Prioritize features based on customer feedback and business value.",
+      "Work closely with engineering and design to deliver high-quality products.",
+      "Analyze market trends and competitor offerings."
+    ]
+  },
+  "marketing": {
+    "keywords": ["marketing", "brand", "social", "content", "seo", "growth"],
+    "responsibilities": [
+      "Develop and execute multi-channel marketing campaigns.",
+      "Analyze campaign performance metrics and optimize for ROI.",
+      "Create compelling content for social media, blogs, and email newsletters.",
+      "Manage the brand voice and ensure consistency across all channels."
+    ]
+  }
+}

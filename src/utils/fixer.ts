@@ -1,6 +1,7 @@
 import riskDictionary from '../data/risk_dictionary.json';
+import roleTemplates from '../data/role_templates.json';
 
-// A map of "Bad Word" -> "Good Replacement"
+// --- EXISTING REPLACEMENTS (Keep these) ---
 const REPLACEMENTS: Record<string, string> = {
   "ninja": "Specialist",
   "guru": "Subject Matter Expert",
@@ -29,19 +30,41 @@ const REPLACEMENTS: Record<string, string> = {
   "work hard play hard": "collaborative culture",
 };
 
+// --- NEW EXPANSION LOGIC ---
+
+export function getSuggestionsForTitle(title: string): string[] {
+  const lowerTitle = title.toLowerCase();
+  let suggestions: string[] = [];
+
+  // Check specific roles
+  // We explicitly cast roleTemplates to any to iterate keys
+  const templates = roleTemplates as any;
+  
+  Object.keys(templates).forEach(key => {
+    if (key === 'general') return;
+    const roleData = templates[key];
+    // If the title matches any keyword for this role
+    if (roleData.keywords.some((k: string) => lowerTitle.includes(k))) {
+      suggestions = [...suggestions, ...roleData.responsibilities];
+    }
+  });
+
+  // Always add general benefits if list is short
+  if (suggestions.length < 3) {
+    suggestions = [...suggestions, ...templates.general.responsibilities];
+  }
+
+  return suggestions;
+}
+
 export function autoTuneText(text: string): string {
   let newText = text;
 
   // 1. SMART REPLACEMENTS
-  // We iterate through our known bad words and swap them.
   Object.keys(REPLACEMENTS).forEach((badWord) => {
-    // Regex matches whole word, case insensitive
     const regex = new RegExp(`\\b${badWord}\\b`, 'gi');
-    
-    // We try to preserve case (simple capitalization check)
     newText = newText.replace(regex, (match) => {
       const goodWord = REPLACEMENTS[badWord];
-      // If original was capitalized, capitalize replacement
       if (match[0] === match[0].toUpperCase()) {
         return goodWord.charAt(0).toUpperCase() + goodWord.slice(1);
       }
@@ -50,23 +73,15 @@ export function autoTuneText(text: string): string {
   });
 
   // 2. FORMATTING FIXES
-  
-  // Fix A: Ensure bullet points have a space after them (e.g., "-Task" -> "- Task")
   newText = newText.replace(/^([•\-\*])([a-zA-Z])/gm, '$1 $2');
-
-  // Fix B: Convert HTML list items <li> to text bullets if they were pasted raw
   newText = newText.replace(/<li>/gi, '\n• ');
   newText = newText.replace(/<\/li>/gi, '');
   newText = newText.replace(/<ul>/gi, '\n');
   newText = newText.replace(/<\/ul>/gi, '\n');
 
-  // Fix C: "Wall of Text" Breaker (Simple Heuristic)
-  // If we see a "Requirements:" header followed by a long paragraph with commas,
-  // we can try to break it (this is risky, so we keep it simple for now).
-  // Instead, let's just ensure double spacing between major sections.
+  // Fix Headers spacing
   const headers = ["Requirements", "Responsibilities", "Qualifications", "Benefits", "About Us"];
   headers.forEach(header => {
-    // Ensure there is a newline before headers
     const regex = new RegExp(`(?<!\n\n)(${header}:?)`, 'gi');
     newText = newText.replace(regex, '\n\n$1');
   });

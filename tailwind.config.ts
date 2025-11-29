@@ -15,7 +15,7 @@ const config: Config = {
     },
   },
   plugins: [
-    require("@tailwindcss/typography"), // Ensures the highlighter works
+    require("@tailwindcss/typography"),
   ],
 };
 export default config;

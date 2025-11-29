@@ -3,16 +3,11 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fafc; /* Light Gray/White Background */
+  --foreground: #0f172a; /* Dark Blue/Black Text */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* DELETE the @media (prefers-color-scheme: dark) block completely */
 
 body {
   background: var(--background);
@@ -33,4 +28,7 @@ body {
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+.btn-secondary {
+  @apply whitespace-nowrap text-xs font-medium text-slate-600 hover:bg-slate-100 px-3 py-1.5 rounded border border-slate-200 transition-colors;
 }
