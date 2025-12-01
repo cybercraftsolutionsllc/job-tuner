@@ -2,20 +2,24 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { auth, currentUser, clerkClient } from "@clerk/nextjs/server";
 
-// Initialize OpenAI
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// REMOVE the global initialization here
+// const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY }); <--- DELETE THIS
 
 export async function POST(req: Request) {
   try {
-    // 1. Check Authentication (Who is this?)
+    // 1. Initialize OpenAI INSIDE the request (Safe for builds)
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+    // 2. Check Authentication
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized. Please Sign In." }, { status: 401 });
     }
 
-    // 2. Check Credits (Do they have any?)
+    // ... (Rest of the code stays exactly the same) ...
+    // Copy the rest of your logic from the previous step below:
+    
     const user = await currentUser();
-    // We check privateMetadata.credits. If it doesn't exist, we assume they are new and have 3.
     const currentCredits = user?.privateMetadata?.credits;
     const credits = currentCredits === undefined ? 3 : Number(currentCredits);
 
@@ -26,7 +30,6 @@ export async function POST(req: Request) {
       }, { status: 403 });
     }
 
-    // 3. Run AI Logic (The expensive part)
     const { title, currentText, type } = await req.json();
     let systemPrompt = "You are an expert HR Recruiter and Copywriter.";
     let userPrompt = "";
@@ -53,7 +56,6 @@ export async function POST(req: Request) {
     
     const result = completion.choices[0].message.content;
 
-    // 4. Deduct Credit (Save back to Clerk)
     const client = await clerkClient();
     await client.users.updateUserMetadata(userId, {
       privateMetadata: {
