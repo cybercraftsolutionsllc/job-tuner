@@ -88,15 +88,21 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, currentText: description, type, tone }),
       });
+      
       const data = await res.json();
 
       if (res.status === 401) { setToast("🔒 Please Sign In."); setIsLoading(false); return; }
       if (res.status === 403 && data.error === "OUT_OF_CREDITS") { setShowUpgradeModal(true); setIsLoading(false); return; }
       if (!res.ok) throw new Error("AI request failed");
 
+      if (!data.result) throw new Error("No result returned from AI");
+
       let cleanResult = data.result.replace(/##/g, "").replace(/\n\n\n/g, "\n\n");
       
-      if (typeof data.remainingCredits === 'number') setCredits(data.remainingCredits);
+      // Update credits only if remainingCredits is a valid number
+      if (typeof data.remainingCredits === 'number') {
+        setCredits(data.remainingCredits);
+      }
       
       if (type === "expand") {
         setDescription((prev) => `${prev}\n\n${cleanResult}`);
@@ -107,7 +113,7 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
       }
     } catch (error) {
       console.error(error);
-      setToast("❌ System Error.");
+      setToast("❌ System Error. Please try again.");
     } finally {
       setIsLoading(false);
       setViewMode("edit");
