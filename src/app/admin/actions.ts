@@ -5,20 +5,26 @@ import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 
 // --- CONFIGURATION ---
-// REPLACE THIS with your actual Clerk User ID from the dashboard
+// 1. Look at your VS Code terminal when you click an admin button.
+// 2. Copy the "Current User ID" logged there and paste it into this array.
 const ADMIN_USER_IDS = [
-  "user_36FJn8KEujWD2PbD6360WxqF5i5", 
+  "ususer_36FJn8KEujWD2PbD6360WxqF5i5", // Replace with your actual ID
 ];
 
 async function checkAdmin() {
   const { userId } = await auth();
   
   if (!userId) {
+    console.error("Admin Check Failed: No user logged in.");
     throw new Error("Unauthorized: Please sign in.");
   }
 
+  // DEBUG LOGGING: This will print to your terminal where `npm run dev` is running
+  console.log(`Admin Access Attempt - Current User ID: ${userId}`);
+  console.log(`Allowed Admin IDs: ${JSON.stringify(ADMIN_USER_IDS)}`);
+
   if (!ADMIN_USER_IDS.includes(userId)) {
-    console.error(`Unauthorized admin access attempt by: ${userId}`);
+    console.error(`ACCESS DENIED for user: ${userId}`);
     throw new Error("Forbidden: You do not have admin privileges.");
   }
   
