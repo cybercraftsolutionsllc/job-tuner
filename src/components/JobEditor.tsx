@@ -88,7 +88,6 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, currentText: description, type, tone }),
       });
-      
       const data = await res.json();
 
       if (res.status === 401) { setToast("🔒 Please Sign In."); setIsLoading(false); return; }
