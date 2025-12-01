@@ -5,27 +5,25 @@ import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 
 // --- CONFIGURATION ---
-// 1. Look at your VS Code terminal when you click an admin button.
-// 2. Copy the "Current User ID" logged there and paste it into this array.
+// 1. Visit /admin in your browser.
+// 2. If you see "Access Denied", copy the User ID displayed there.
+// 3. Paste it into this array.
 const ADMIN_USER_IDS = [
-  "user_2tPZqX9Jq0qX9Jq0qX9Jq0qX9J", // Replace with your actual ID
+  "user_36FJn8KEujWD2PbD6360WxqF5i5", // Replace this with your ID
 ];
 
 async function checkAdmin() {
   const { userId } = await auth();
   
   if (!userId) {
-    console.error("Admin Check Failed: No user logged in.");
     throw new Error("Unauthorized: Please sign in.");
   }
 
-  // DEBUG LOGGING: This will print to your terminal where `npm run dev` is running
-  console.log(`Admin Access Attempt - Current User ID: ${userId}`);
-  console.log(`Allowed Admin IDs: ${JSON.stringify(ADMIN_USER_IDS)}`);
+  // DEBUG: Print to server terminal
+  console.log(`[Admin Action] User: ${userId}`);
 
   if (!ADMIN_USER_IDS.includes(userId)) {
-    console.error(`ACCESS DENIED for user: ${userId}`);
-    throw new Error("Forbidden: You do not have admin privileges.");
+    throw new Error(`Forbidden: User ${userId} is not an admin.`);
   }
   
   return true;

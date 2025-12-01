@@ -9,16 +9,30 @@ export default async function AdminDashboard() {
   const { userId } = await auth();
   
   if (!userId) {
-    redirect("/"); // Redirect to home if not logged in
+    redirect("/"); // Send to home if not logged in at all
   }
 
-  // --- SECURITY CHECK (Matches actions.ts) ---
-  // Hardcoded for MVP security. Update with your ID.
-  const ADMIN_IDS = ["user_36FJn8KEujWD2PbD6360WxqF5i5X9Jq0qX9Jq0qX9J"]; 
+  // --- SECURITY CONFIG ---
+  // Paste your ID here to enable access for yourself
+  const ADMIN_IDS = ["user_2tPZqX9Jq0qX9Jq0qX9Jq0qX9J"]; 
   
+  // If not admin, show the ID so you can copy it
   if (!ADMIN_IDS.includes(userId)) {
-    console.error(`Unauthorized Access Attempt to /admin by ${userId}`);
-    redirect("/"); // Redirect unauthorized users home
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4">
+        <div className="bg-white p-8 rounded-xl shadow-lg border border-red-100 max-w-md w-full text-center">
+          <div className="text-4xl mb-4">🛡️</div>
+          <h1 className="text-xl font-bold text-slate-800 mb-2">Admin Access Required</h1>
+          <p className="text-slate-500 mb-6 text-sm">
+            To enable this dashboard, add your User ID to the <code>ADMIN_IDS</code> array in <code>src/app/admin/page.tsx</code> and <code>src/app/admin/actions.ts</code>.
+          </p>
+          <div className="bg-slate-100 p-3 rounded-lg border border-slate-200 font-mono text-xs text-slate-600 break-all select-all">
+            {userId}
+          </div>
+          <p className="mt-2 text-xs text-slate-400">^ Copy this ID</p>
+        </div>
+      </div>
+    );
   }
 
   const client = await clerkClient();
@@ -35,9 +49,9 @@ export default async function AdminDashboard() {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-extrabold text-slate-800">Admin Dashboard</h1>
-            <p className="text-slate-500 mt-1">Manage user plans and credit balances directly.</p>
+            <p className="text-slate-500 mt-1">Manage user plans and credits.</p>
           </div>
-          <div className="bg-blue-100 text-blue-800 px-4 py-2 rounded-lg text-sm font-medium">
+          <div className="bg-blue-100 text-blue-800 px-4 py-2 rounded-lg text-sm font-medium border border-blue-200">
             Admin Mode Active
           </div>
         </div>
@@ -48,9 +62,8 @@ export default async function AdminDashboard() {
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">User</th>
-                  <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Plan Status</th>
+                  <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Plan</th>
                   <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Credits</th>
-                  <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Joined</th>
                   <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
@@ -59,72 +72,40 @@ export default async function AdminDashboard() {
                   const isPro = user.privateMetadata.plan === "pro";
                   const credits = user.privateMetadata.credits ?? 5;
                   const email = user.emailAddresses[0]?.emailAddress || "No Email";
-                  const joinedDate = new Date(user.createdAt).toLocaleDateString();
 
                   return (
                     <tr key={user.id} className="hover:bg-slate-50 transition-colors">
                       <td className="p-4">
                         <div className="flex items-center gap-3">
-                          <img 
-                            src={user.imageUrl} 
-                            alt="" 
-                            className="w-10 h-10 rounded-full border border-slate-200" 
-                          />
+                          <img src={user.imageUrl} alt="" className="w-8 h-8 rounded-full border border-slate-200" />
                           <div>
-                            <div className="font-semibold text-slate-900">
-                              {user.firstName} {user.lastName}
-                            </div>
-                            <div className="text-xs text-slate-500 font-mono">
-                              {email}
-                            </div>
-                            <div className="text-[10px] text-slate-400 font-mono mt-0.5">
-                              ID: {user.id}
-                            </div>
+                            <div className="font-semibold text-sm text-slate-900">{user.firstName} {user.lastName}</div>
+                            <div className="text-xs text-slate-500 font-mono">{email}</div>
                           </div>
                         </div>
                       </td>
-
                       <td className="p-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                          isPro 
-                            ? "bg-purple-50 text-purple-700 border-purple-200" 
-                            : "bg-slate-100 text-slate-600 border-slate-200"
-                        }`}>
-                          {isPro ? "⚡ PRO" : "Free Tier"}
-                        </span>
+                        {isPro ? (
+                          <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-bold border border-purple-200">PRO</span>
+                        ) : (
+                          <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-bold border border-slate-200">FREE</span>
+                        )}
                       </td>
-
-                      <td className="p-4">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono font-bold text-slate-700">{credits as number}</span>
-                          <span className="text-xs text-slate-400">credits</span>
-                        </div>
-                      </td>
-
-                      <td className="p-4 text-sm text-slate-500">
-                        {joinedDate}
-                      </td>
-
+                      <td className="p-4 font-mono text-sm font-medium">{credits as number}</td>
                       <td className="p-4 text-right">
                         <div className="flex justify-end gap-2">
                           <form action={toggleProStatus.bind(null, user.id, isPro)}>
-                            <button className={`px-3 py-1.5 text-xs font-semibold rounded border transition-all ${
-                              isPro
-                                ? "border-slate-300 text-slate-600 hover:bg-slate-100"
-                                : "bg-purple-600 text-white border-purple-600 hover:bg-purple-700"
-                            }`}>
-                              {isPro ? "Downgrade" : "Upgrade to Pro"}
+                            <button className="px-3 py-1 text-xs font-medium border border-slate-300 rounded hover:bg-white hover:text-slate-900 transition-colors">
+                              {isPro ? "Downgrade" : "Make Pro"}
                             </button>
                           </form>
-
                           <form action={addCredits.bind(null, user.id, 50)}>
-                            <button className="px-3 py-1.5 text-xs font-semibold bg-white text-blue-600 border border-blue-200 rounded hover:bg-blue-50 transition-all">
+                            <button className="px-3 py-1 text-xs font-medium bg-white text-blue-600 border border-blue-200 rounded hover:bg-blue-50 transition-colors">
                               +50 Credits
                             </button>
                           </form>
                         </div>
                       </td>
-
                     </tr>
                   );
                 })}
