@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { auth, currentUser, clerkClient } from "@clerk/nextjs/server";
+import { TONE_PROFILES, ToneKey, AI_CONFIG } from "@/utils/constants";
 
 export async function POST(req: Request) {
   try {
@@ -18,59 +19,71 @@ export async function POST(req: Request) {
     // Default to 5 credits if not set
     const credits = currentCredits === undefined ? 5 : Number(currentCredits);
 
+    // Hard gate: If not pro and out of credits, stop.
     if (!isPro && credits <= 0) {
       return NextResponse.json({ 
         error: "OUT_OF_CREDITS", 
-        message: "You have used all 5 free credits. Upgrade to continue." 
+        message: "You have used all your free AI credits." 
       }, { status: 403 });
     }
 
-    const { title, currentText, type } = await req.json();
+    const { title, currentText, type, tone } = await req.json();
     
+    // Future-Proofing: Validate tone against our constants
+    // If 'tone' is missing or invalid, default to 'professional'
+    const toneKey = (tone && TONE_PROFILES[tone as ToneKey]) ? (tone as ToneKey) : 'professional';
+    const selectedTonePrompt = TONE_PROFILES[toneKey].prompt;
+
     const systemPrompt = `
-      You are a Senior Technical Recruiter and DE&I Expert at a Fortune 500 tech company.
-      Your goal is to write job descriptions that are engaging, inclusive, and optimized for search rankings (SEO).
+      You are a Senior Technical Recruiter and Copywriter at a top-tier company.
+      ${selectedTonePrompt}
       
-      Your Style Guide:
-      - Tone: Professional, welcoming, and excitement-inducing.
-      - Perspective: Use "You" (candidate-focused) more than "We" (company-focused).
-      - Inclusivity: Strictly avoid gendered language (e.g., "salesman", "guys") and toxic phrases (e.g., "rockstar", "hustle", "thick skin").
-      - Formatting: Use clear headers and bullet points for readability.
+      Your Core Rules:
+      1. **Candidate-Centric**: Use "You" more than "We". Sell the opportunity.
+      2. **Bias-Free**: STRICTLY avoid gendered language (e.g., "salesman", "guys") and toxic phrases (e.g., "rockstar", "hustle").
+      3. **Formatting**: Use Markdown headers (##) and bullet points for readability.
+      4. **SEO Optimized**: Ensure the job title appears naturally in the first 2 sentences.
     `;
 
     let userPrompt = "";
 
     if (type === "expand") {
       userPrompt = `
-        I need a "Key Responsibilities" section for the role of "${title}".
-        The current draft text (for context) is: "${currentText.substring(0, 300)}...".
+        Context: The role is "${title}".
+        Draft Text: "${currentText.substring(0, 300)}...".
 
-        Task:
-        Generate 6-8 highly specific, professional bullet points describing what this person will actually do.
-        Return ONLY the bullet points formatted with "• ".
+        Task: Generate 6-8 high-impact "Key Responsibilities" bullet points.
+        Requirement: Start every bullet with a strong action verb. Return ONLY the bullets.
       `;
     } else {
       userPrompt = `
-        Completely rewrite and optimize the following Job Description for the role of "${title}".
-        Original Text: "${currentText}"
+        Rewrite this Job Description for a "${title}" role.
+        
+        Original Input:
+        "${currentText}"
 
-        Task:
-        Produce a full, polished Job Description (approx 400-500 words).
-        Structure: About the Role, What You'll Do, What You Bring, Benefits.
+        Structure:
+        1. **The Mission** (Hook the candidate instantly)
+        2. **What You'll Do** (Responsibilities)
+        3. **What You Bring** (Requirements)
+        4. **Why Join Us** (Benefits & Culture)
+
+        Length: 400-500 words.
       `;
     }
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: AI_CONFIG.defaultModel,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
       ],
-      temperature: 0.7,
+      temperature: AI_CONFIG.temperature,
     });
     
     const result = completion.choices[0].message.content;
 
+    // Only deduct credits if NOT Pro
     if (!isPro) {
       const client = await clerkClient();
       await client.users.updateUserMetadata(userId, {

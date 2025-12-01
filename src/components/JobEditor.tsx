@@ -1,26 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import confetti from "canvas-confetti";
 import { analyzeJobDescription, ScoreReport } from "../utils/optimizer";
 import { autoTuneText, GOLD_STANDARD_TEMPLATE, getSuggestionsForTitle } from "../utils/fixer";
 import { downloadPDF, shareViaEmail } from "../utils/exporter";
 import TextHighlighter from "./TextHighlighter";
+import { TONE_PROFILES, ToneKey } from "../utils/constants";
 
 const SAMPLE_TITLE = "Rockstar Ninja Developer Needed ASAP!!!";
-const SAMPLE_DESC = `
-We are looking for a young, energetic digital native to join our fast-paced family! You must be willing to wear many hats and hustle 24/7. 
-
-We need a ninja who is a master of code.
-The candidate must be able to lift 25 lbs and be clean shaven.
-He must have a degree from a top university.
-We offer a competitive salary.
-
-Requirements:
-- Code all day
--No complainers
--Thick skin
-`;
+const SAMPLE_DESC = `We are looking for a young, energetic digital native...`;
 
 interface JobEditorProps {
   initialCredits: number;
@@ -28,34 +17,60 @@ interface JobEditorProps {
 }
 
 export default function JobEditor({ initialCredits, initialPlan }: JobEditorProps) {
+  // --- STATE ---
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [report, setReport] = useState<ScoreReport | null>(null);
   const [viewMode, setViewMode] = useState<"edit" | "audit">("edit");
   const [toast, setToast] = useState<string | null>(null);
   
-  // Initialize with real data from props
-  const [credits, setCredits] = useState(initialCredits);
-  const [isProUser, setIsProUser] = useState(initialPlan === 'pro');
-  
-  // Toggle for "Pro Mode" switch in UI (visual only, logic checks real status)
+  // Settings
+  const [tone, setTone] = useState<ToneKey>("professional");
   const [isProMode, setIsProMode] = useState(false); 
+  const [credits, setCredits] = useState(initialCredits);
+  
+  // UI State
   const [isLoading, setIsLoading] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
-  // Analysis Engine
+  // --- AUTOSAVE LOGIC ---
+  // 1. Load on Mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedTitle = localStorage.getItem("jt_draft_title");
+      const savedDesc = localStorage.getItem("jt_draft_desc");
+      if (savedTitle) setTitle(savedTitle);
+      if (savedDesc) setDescription(savedDesc);
+    }
+  }, []);
+
+  // 2. Save on Change (Debounced 1s)
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      localStorage.setItem("jt_draft_title", title);
+      localStorage.setItem("jt_draft_desc", description);
+      if (title || description) setLastSaved(new Date());
+    }, 1000);
+
+    return () => clearTimeout(handler);
+  }, [title, description]);
+
+  // --- ANALYSIS ENGINE ---
   useEffect(() => {
     if (description.trim().length > 0) {
       const result = analyzeJobDescription(description, title);
       setReport(result);
-      if (result.overallScore >= 90 && viewMode === 'audit') {
+      // Trigger confetti only on high score upgrade, not every keystroke
+      if (result.overallScore >= 90 && viewMode === 'audit' && (!report || report.overallScore < 90)) {
         confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
       }
     } else {
       setReport(null);
     }
-  }, [title, description, viewMode]);
+  }, [description, title, viewMode]);
 
+  // Toast Timer
   useEffect(() => {
     if (toast) {
       const timer = setTimeout(() => setToast(null), 3000);
@@ -63,50 +78,42 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
     }
   }, [toast]);
 
+  // --- ACTIONS ---
+
   const callAI = async (type: "expand" | "rewrite") => {
     setIsLoading(true);
     try {
       const res = await fetch("/api/ai-tune", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, currentText: description, type }),
+        body: JSON.stringify({ 
+          title, 
+          currentText: description, 
+          type, 
+          tone // Passing the selected tone
+        }),
       });
       const data = await res.json();
 
-      if (res.status === 401) { 
-        setToast("🔒 Please Sign In (Top Right) to use AI."); 
-        setIsLoading(false); 
-        return; 
-      }
-      
-      // Handle Out of Credits
-      if (res.status === 403 && data.error === "OUT_OF_CREDITS") { 
-        setShowUpgradeModal(true);
-        setIsLoading(false); 
-        return; 
-      }
-      
+      if (res.status === 401) { setToast("🔒 Please Sign In."); setIsLoading(false); return; }
+      if (res.status === 403 && data.error === "OUT_OF_CREDITS") { setShowUpgradeModal(true); setIsLoading(false); return; }
       if (!res.ok) throw new Error("AI request failed");
 
       let cleanResult = data.result.replace(/\*\*/g, "").replace(/##/g, "").replace(/\n\n\n/g, "\n\n");
       
-      // Update local state with new credits
-      if (typeof data.remainingCredits === 'number') {
-        setCredits(data.remainingCredits);
-      }
-
+      if (typeof data.remainingCredits === 'number') setCredits(data.remainingCredits);
       const creditMsg = data.isPro ? "Unlimited" : `${data.remainingCredits ?? 0} left`;
       
       if (type === "expand") {
         setDescription((prev) => `${prev}\n\n${cleanResult}`);
-        setToast(`🤖 AI Content Added! (${creditMsg})`);
+        setToast(`🤖 Content Expanded! (${creditMsg})`);
       } else {
         setDescription(cleanResult);
-        setToast(`🤖 AI Rewrite Complete! (${creditMsg})`);
+        setToast(`🤖 Rewrite Complete! (${creditMsg})`);
       }
     } catch (error) {
       console.error(error);
-      setToast("❌ System Error. Try again later.");
+      setToast("❌ System Error.");
     } finally {
       setIsLoading(false);
       setViewMode("edit");
@@ -115,23 +122,23 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
 
   const handleAutoTune = () => {
     if (isProMode) {
-      if (!confirm("Pro Mode: This will use 1 Credit to AI rewrite your text. Continue?")) return;
+      if (!confirm("Pro Mode: Use 1 Credit to AI rewrite?")) return;
       callAI("rewrite");
     } else {
       const fixed = autoTuneText(description);
       setDescription(fixed);
-      setToast("✨ Text Auto-Tuned (Basic Grammar & Swaps).");
+      setToast("✨ Text Auto-Tuned (Basic).");
       setViewMode("edit");
     }
   };
 
   const handleExpand = () => {
-    if (title.length < 3) { setToast("⚠️ Please enter a Job Title first."); return; }
+    if (title.length < 3) { setToast("⚠️ Enter a Job Title first."); return; }
     if (isProMode) {
       callAI("expand");
     } else {
       const suggestions = getSuggestionsForTitle(title);
-      if (suggestions.length === 0) { setToast("⚠️ Free Library: No match. Enable PRO for AI."); return; }
+      if (suggestions.length === 0) { setToast("⚠️ No library match. Enable PRO for AI."); return; }
       const bulletText = suggestions.map((s) => `• ${s}`).join("\n");
       setDescription((prev) => `${prev}\n\nSUGGESTED RESPONSIBILITIES:\n${bulletText}`);
       setToast("🚀 Standard content added.");
@@ -139,11 +146,15 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
     }
   };
 
-  const handleCopy = async () => { await navigator.clipboard.writeText(`${title}\n\n${description}`); setToast("📋 Full JD Copied to Clipboard!"); };
-  const handleExportPDF = () => { if(title || description) { downloadPDF(title, description); setToast("📄 PDF Downloading..."); } };
-  const handleLoadSample = () => { setTitle(SAMPLE_TITLE); setDescription(SAMPLE_DESC.trim()); setViewMode("audit"); };
-  const handleInsertTemplate = () => { if (description.length > 50 && !confirm("Overwrite text?")) return; setTitle("Senior [Role Name]"); setDescription(GOLD_STANDARD_TEMPLATE); setToast("📋 Template Inserted."); setViewMode("edit"); };
-  const handleClear = () => { setTitle(""); setDescription(""); setViewMode("edit"); };
+  const handleClear = () => { 
+    if(confirm("Clear draft? This cannot be undone.")) {
+      setTitle(""); setDescription(""); setViewMode("edit"); 
+      localStorage.removeItem("jt_draft_title"); 
+      localStorage.removeItem("jt_draft_desc");
+    }
+  };
+
+  // --- RENDER HELPERS ---
   const getScoreColor = (score: number) => { if (score >= 80) return "text-emerald-600"; if (score >= 50) return "text-amber-500"; return "text-rose-600"; };
   const getScoreBg = (score: number) => { 
       if (score >= 80) return "bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200"; 
@@ -154,72 +165,48 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full relative">
       
-      {/* LOADING OVERLAY */}
       {isLoading && (
         <div className="absolute inset-0 z-50 bg-white/80 flex flex-col items-center justify-center backdrop-blur-md rounded-xl">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
-          <p className="text-indigo-800 font-bold animate-pulse">AI is writing...</p>
+          <p className="text-indigo-800 font-bold animate-pulse">Refining your Job Description...</p>
         </div>
       )}
       
-      {/* TOAST */}
       {toast && (
-        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-2 animate-bounce-short">
+        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-2 animate-bounce-short z-[60]">
           <span>{toast}</span>
         </div>
       )}
 
       {/* UPGRADE MODAL */}
       {showUpgradeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center relative overflow-hidden animate-float">
               <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-purple-600"></div>
-              <button onClick={() => setShowUpgradeModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors">✕</button>
+              <button onClick={() => setShowUpgradeModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">✕</button>
               
               <div className="mb-4 text-4xl">⚡</div>
-              <h3 className="text-2xl font-bold text-slate-800 mb-2">Upgrade to Pro</h3>
-              <p className="text-slate-600 mb-6">
-                Get more credits to keep optimizing your JDs with Senior Recruiter AI.
-              </p>
+              <h3 className="text-2xl font-bold text-slate-800 mb-2">Power Up Your Hiring</h3>
+              <p className="text-slate-600 mb-6">Unlock unlimited AI rewrites, advanced tones, and premium templates.</p>
               
               <div className="bg-slate-50 rounded-xl p-4 mb-6 text-left space-y-3">
-                  <div className="flex items-center gap-3">
-                      <span className="text-green-500 text-xl font-bold">✓</span>
-                      <span className="text-sm font-medium text-slate-700">100 AI Credits</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                      <span className="text-green-500 text-xl font-bold">✓</span>
-                      <span className="text-sm font-medium text-slate-700">Senior Recruiter Persona</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                      <span className="text-green-500 text-xl font-bold">✓</span>
-                      <span className="text-sm font-medium text-slate-700">Priority Support</span>
-                  </div>
+                  <div className="flex items-center gap-3"><span className="text-green-500 font-bold">✓</span><span className="text-sm font-medium text-slate-700">100 AI Credits</span></div>
+                  <div className="flex items-center gap-3"><span className="text-green-500 font-bold">✓</span><span className="text-sm font-medium text-slate-700">Multiple Tones (Startup, Exec)</span></div>
+                  <div className="flex items-center gap-3"><span className="text-green-500 font-bold">✓</span><span className="text-sm font-medium text-slate-700">Priority Processing</span></div>
               </div>
 
-              <a 
-                href={process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK || "#"}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block w-full py-3.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 mb-4"
-                onClick={() => setTimeout(() => setShowUpgradeModal(false), 2000)}
-              >
-                  Buy 100 Credits - $19
+              <a href={process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK || "#"} target="_blank" rel="noopener noreferrer" className="block w-full py-3.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 mb-4" onClick={() => setTimeout(() => setShowUpgradeModal(false), 2000)}>
+                  Get Pro Access - $19
               </a>
-              
-              <button 
-                  onClick={() => setShowUpgradeModal(false)}
-                  className="text-sm text-slate-400 hover:text-slate-600 font-medium underline decoration-slate-300 underline-offset-4"
-              >
-                  Maybe later
-              </button>
+              <button onClick={() => setShowUpgradeModal(false)} className="text-sm text-slate-400 hover:text-slate-600 underline">No thanks</button>
           </div>
         </div>
       )}
 
-      {/* --- LEFT COLUMN --- */}
+      {/* --- EDITOR COLUMN --- */}
       <div className="lg:col-span-8 flex flex-col gap-4">
         <div className="glass-panel p-3 rounded-t-xl border-b-0 flex flex-col xl:flex-row items-center justify-between gap-3 sticky top-0 z-20">
+          
           <div className="flex bg-slate-100/50 p-1 rounded-lg w-full xl:w-auto backdrop-blur-sm">
             <button onClick={() => setViewMode("edit")} className={`flex-1 xl:flex-none px-4 py-1.5 text-sm font-semibold rounded-md transition-all duration-300 ${viewMode === "edit" ? "bg-white text-blue-600 shadow-md" : "text-slate-500 hover:text-slate-700"}`}>✏️ Write</button>
             <button onClick={() => setViewMode("audit")} disabled={!report} className={`flex-1 xl:flex-none px-4 py-1.5 text-sm font-semibold rounded-md transition-all duration-300 ${viewMode === "audit" ? "bg-white text-blue-600 shadow-md" : "text-slate-500 hover:text-slate-700 disabled:opacity-50"} ${report && report.issues.length > 0 ? 'animate-pulse text-rose-500' : ''}`}>👁️ Audit View</button>
@@ -230,26 +217,46 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
                <button onClick={() => setIsProMode(false)} className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-300 ${!isProMode ? 'bg-white text-slate-700 shadow-sm' : 'text-slate-400'}`}>Basic</button>
                <button onClick={() => setIsProMode(true)} className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-300 flex items-center gap-1 ${isProMode ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md' : 'text-slate-400'}`}><span>PRO</span><span className="text-[10px]">AI</span></button>
              </div>
+
+             {/* TONE SELECTOR (Dynamic) */}
+             {isProMode && (
+                <select 
+                  value={tone} 
+                  onChange={(e) => setTone(e.target.value as ToneKey)}
+                  className="bg-white border border-slate-200 text-xs font-bold text-slate-600 rounded px-2 py-1.5 focus:outline-none focus:border-indigo-500 shadow-sm"
+                >
+                  {Object.entries(TONE_PROFILES).map(([key, profile]) => (
+                    <option key={key} value={key}>{profile.label}</option>
+                  ))}
+                </select>
+             )}
              
-             {/* NEW: Explicit Upgrade Button */}
+             <div className="w-px bg-slate-300 mx-1 hidden xl:block h-6"></div>
+             
+             <button onClick={handleExpand} className={`px-3 py-1.5 rounded text-xs font-bold transition-all duration-300 flex items-center gap-1 border ${isProMode ? "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100" : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"}`}>
+                {isProMode ? "🤖 Expand" : "➕ Expand"}
+             </button>
+             
+             <button onClick={handleAutoTune} disabled={description.length < 10} className={`px-3 py-1.5 rounded text-xs font-bold shadow-sm transition-all duration-300 flex items-center gap-1 disabled:opacity-50 ${isProMode ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700" : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700"}`}>
+                {isProMode ? "✨ Rewrite" : "✨ Fix"}
+             </button>
+
              <button onClick={() => setShowUpgradeModal(true)} className="px-3 py-1.5 rounded text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200 transition-colors flex items-center gap-1">
-                ⚡ Upgrade ({credits} credits)
+                ⚡ {credits}
              </button>
 
              <div className="w-px bg-slate-300 mx-1 hidden xl:block h-6"></div>
-             <button onClick={handleExpand} className={`px-3 py-1.5 rounded text-xs font-bold transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center gap-1 border ${isProMode ? "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100" : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"}`} title={isProMode ? "Generate specific content with AI" : "Add generic content from library"}>{isProMode ? "🤖 AI Expand" : "➕ Expand JD"}</button>
-             <button onClick={handleAutoTune} disabled={description.length < 10} className={`px-3 py-1.5 rounded text-xs font-bold shadow-sm transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center gap-1 disabled:opacity-50 ${isProMode ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700" : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700"}`}>{isProMode ? "✨ AI Rewrite" : "✨ Auto-Tune"}</button>
-             <div className="w-px bg-slate-300 mx-1 hidden xl:block h-6"></div>
-             <button onClick={handleInsertTemplate} className="btn-secondary transition-transform hover:scale-105" title="Template">📋</button>
-             <button onClick={handleLoadSample} className="btn-secondary transition-transform hover:scale-105">Demo</button>
-             <button onClick={handleClear} className="btn-secondary text-red-500 hover:bg-red-50 hover:border-red-200 transition-transform hover:scale-105">Clear</button>
+             <button onClick={handleClear} className="btn-secondary text-red-500 hover:bg-red-50" title="Clear Draft">🗑️</button>
           </div>
         </div>
 
         <div className="glass-panel rounded-b-xl min-h-[600px] flex flex-col relative overflow-hidden border-t-0">
-           <div className="p-6 border-b border-slate-100 bg-slate-50/30">
-             <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Job Title <span className="text-slate-300 font-normal">(Used for generation)</span></label>
-             <input type="text" suppressHydrationWarning={true} className="w-full bg-white/50 backdrop-blur-sm border border-slate-200 p-3 rounded-lg text-lg font-semibold text-slate-900 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder="e.g. Senior Product Manager" value={title} onChange={(e) => setTitle(e.target.value)} />
+           <div className="p-6 border-b border-slate-100 bg-slate-50/30 flex justify-between items-center">
+             <div className="flex-grow mr-4">
+               <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Job Title</label>
+               <input type="text" suppressHydrationWarning={true} className="w-full bg-white/50 backdrop-blur-sm border border-slate-200 p-3 rounded-lg text-lg font-semibold text-slate-900 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder="e.g. Senior Product Manager" value={title} onChange={(e) => setTitle(e.target.value)} />
+             </div>
+             {lastSaved && <span className="text-[10px] text-slate-400 whitespace-nowrap mt-6">Saved {lastSaved.toLocaleTimeString()}</span>}
            </div>
            <div className="flex-grow flex flex-col relative">
              <div className="px-6 pt-4 pb-2 flex justify-between items-end"><label className="block text-xs font-bold text-slate-400 uppercase tracking-wide">Job Description</label></div>
@@ -284,9 +291,9 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
                   <ScoreBar label="Legal Risk" score={report.riskScore} />
                 </div>
                 <div className="grid grid-cols-3 gap-2 pt-4 border-t border-slate-200/50">
-                  <button onClick={handleExportPDF} className="flex flex-col items-center justify-center gap-1 py-3 rounded-lg bg-white/50 border border-slate-200 text-slate-700 text-xs font-bold hover:bg-white hover:border-red-200 hover:text-red-600 transition-all shadow-sm transform hover:-translate-y-1"><span className="text-lg">📄</span> PDF</button>
+                  <button onClick={async () => { await navigator.clipboard.writeText(`${title}\n\n${description}`); setToast("📋 Copied!"); }} className="flex flex-col items-center justify-center gap-1 py-3 rounded-lg bg-white/50 border border-slate-200 text-slate-700 text-xs font-bold hover:bg-white hover:border-emerald-200 hover:text-emerald-600 transition-all shadow-sm transform hover:-translate-y-1"><span className="text-lg">📋</span> Copy</button>
+                  <button onClick={() => { if(title || description) downloadPDF(title, description); }} className="flex flex-col items-center justify-center gap-1 py-3 rounded-lg bg-white/50 border border-slate-200 text-slate-700 text-xs font-bold hover:bg-white hover:border-red-200 hover:text-red-600 transition-all shadow-sm transform hover:-translate-y-1"><span className="text-lg">📄</span> PDF</button>
                   <button onClick={() => shareViaEmail(title, description)} className="flex flex-col items-center justify-center gap-1 py-3 rounded-lg bg-white/50 border border-slate-200 text-slate-700 text-xs font-bold hover:bg-white hover:border-blue-200 hover:text-blue-600 transition-all shadow-sm transform hover:-translate-y-1"><span className="text-lg">✉️</span> Email</button>
-                  <button onClick={handleCopy} className="flex flex-col items-center justify-center gap-1 py-3 rounded-lg bg-white/50 border border-slate-200 text-slate-700 text-xs font-bold hover:bg-white hover:border-emerald-200 hover:text-emerald-600 transition-all shadow-sm transform hover:-translate-y-1"><span className="text-lg">📋</span> Copy</button>
                 </div>
               </div>
             ) : (
@@ -296,8 +303,8 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
               </div>
             )}
           </div>
+          
           <div className="glass-panel rounded-xl flex flex-col max-h-[600px]">
-             {/* Issues List Code (Same as before) */}
              <div className="p-4 border-b border-slate-100 bg-slate-50/50 rounded-t-xl flex justify-between items-center">
               <h3 className="font-bold text-slate-700">Audit Findings</h3>
               <span className="bg-slate-200 text-slate-600 text-xs font-bold px-2 py-1 rounded-full">{report?.issues.length || 0}</span>
