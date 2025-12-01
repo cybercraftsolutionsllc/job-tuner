@@ -8,7 +8,7 @@ import { revalidatePath } from "next/cache";
 // 1. Look at your VS Code terminal when you click an admin button.
 // 2. Copy the "Current User ID" logged there and paste it into this array.
 const ADMIN_USER_IDS = [
-  "ususer_36FJn8KEujWD2PbD6360WxqF5i5", // Replace with your actual ID
+  "user_2tPZqX9Jq0qX9Jq0qX9Jq0qX9J", // Replace with your actual ID
 ];
 
 async function checkAdmin() {

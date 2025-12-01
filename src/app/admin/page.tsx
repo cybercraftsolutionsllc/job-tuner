@@ -8,7 +8,18 @@ export const dynamic = 'force-dynamic';
 export default async function AdminDashboard() {
   const { userId } = await auth();
   
-  if (!userId) redirect("/");
+  if (!userId) {
+    redirect("/"); // Redirect to home if not logged in
+  }
+
+  // --- SECURITY CHECK (Matches actions.ts) ---
+  // Hardcoded for MVP security. Update with your ID.
+  const ADMIN_IDS = ["user_36FJn8KEujWD2PbD6360WxqF5i5X9Jq0qX9Jq0qX9J"]; 
+  
+  if (!ADMIN_IDS.includes(userId)) {
+    console.error(`Unauthorized Access Attempt to /admin by ${userId}`);
+    redirect("/"); // Redirect unauthorized users home
+  }
 
   const client = await clerkClient();
   const response = await client.users.getUserList({ 

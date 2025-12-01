@@ -32,6 +32,7 @@ export default function JobEditor() {
   const [isLoading, setIsLoading] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
+  // Analysis Engine
   useEffect(() => {
     if (description.trim().length > 0) {
       const result = analyzeJobDescription(description, title);
@@ -67,6 +68,7 @@ export default function JobEditor() {
         return; 
       }
       
+      // Handle Out of Credits
       if (res.status === 403 && data.error === "OUT_OF_CREDITS") { 
         setShowUpgradeModal(true);
         setIsLoading(false); 
@@ -76,8 +78,8 @@ export default function JobEditor() {
       if (!res.ok) throw new Error("AI request failed");
 
       let cleanResult = data.result.replace(/\*\*/g, "").replace(/##/g, "").replace(/\n\n\n/g, "\n\n");
-      const creditMsg = data.isPro ? "Unlimited" : `${data.remainingCredits} left`;
-
+      const creditMsg = data.isPro ? "Unlimited" : `${data.remainingCredits ?? 'Unlimited'} left`;
+      
       if (type === "expand") {
         setDescription((prev) => `${prev}\n\n${cleanResult}`);
         setToast(`🤖 AI Content Added! (${creditMsg})`);
@@ -96,6 +98,8 @@ export default function JobEditor() {
 
   const handleAutoTune = () => {
     if (isProMode) {
+      // Trigger modal directly if user wants Pro but isn't authorized (handled by backend or user choice)
+      // For now, confirm they want to use a credit
       if (!confirm("Pro Mode: This will use 1 Credit to AI rewrite your text. Continue?")) return;
       callAI("rewrite");
     } else {
@@ -135,6 +139,8 @@ export default function JobEditor() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full relative">
       
+      {/* --- MODALS & OVERLAYS --- */}
+      
       {isLoading && (
         <div className="absolute inset-0 z-50 bg-white/80 flex flex-col items-center justify-center backdrop-blur-md rounded-xl">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
@@ -148,23 +154,16 @@ export default function JobEditor() {
         </div>
       )}
 
+      {/* UPGRADE MODAL */}
       {showUpgradeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center relative overflow-hidden animate-float">
               <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-purple-600"></div>
-              
-              <button 
-                onClick={() => setShowUpgradeModal(false)} 
-                className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
-              >
-                ✕
-              </button>
+              <button onClick={() => setShowUpgradeModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">✕</button>
               
               <div className="mb-4 text-4xl">⚡</div>
               <h3 className="text-2xl font-bold text-slate-800 mb-2">Out of Credits</h3>
-              <p className="text-slate-600 mb-6">
-                You've used your 5 free credits. Purchase a credit pack to continue using the Senior Recruiter AI.
-              </p>
+              <p className="text-slate-600 mb-6">You've used all your free credits. Purchase a credit pack to continue.</p>
               
               <div className="bg-slate-50 rounded-xl p-4 mb-6 text-left space-y-3">
                   <div className="flex items-center gap-3">
@@ -181,14 +180,13 @@ export default function JobEditor() {
                   </div>
               </div>
 
+              {/* Stripe Link */}
               <a 
                 href={process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK || "#"}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block w-full py-3.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5"
-                onClick={() => {
-                  setTimeout(() => setShowUpgradeModal(false), 2000);
-                }}
+                onClick={() => setTimeout(() => setShowUpgradeModal(false), 2000)}
               >
                   Buy 100 Credits - $19
               </a>
@@ -203,6 +201,7 @@ export default function JobEditor() {
         </div>
       )}
 
+      {/* --- LEFT COLUMN --- */}
       <div className="lg:col-span-8 flex flex-col gap-4">
         <div className="glass-panel p-3 rounded-t-xl border-b-0 flex flex-col xl:flex-row items-center justify-between gap-3 sticky top-0 z-20">
           <div className="flex bg-slate-100/50 p-1 rounded-lg w-full xl:w-auto backdrop-blur-sm">
@@ -243,6 +242,7 @@ export default function JobEditor() {
         </div>
       </div>
 
+      {/* --- RIGHT COLUMN --- */}
       <div className="lg:col-span-4">
         <div className="sticky top-24 flex flex-col gap-6">
           <div className={`p-6 rounded-xl shadow-lg border backdrop-blur-md ${report ? getScoreBg(report.overallScore) : 'glass-panel'}`}>
@@ -274,8 +274,8 @@ export default function JobEditor() {
               </div>
             )}
           </div>
-          
           <div className="glass-panel rounded-xl flex flex-col max-h-[600px]">
+             {/* Issues List Code (Same as before) */}
              <div className="p-4 border-b border-slate-100 bg-slate-50/50 rounded-t-xl flex justify-between items-center">
               <h3 className="font-bold text-slate-700">Audit Findings</h3>
               <span className="bg-slate-200 text-slate-600 text-xs font-bold px-2 py-1 rounded-full">{report?.issues.length || 0}</span>
