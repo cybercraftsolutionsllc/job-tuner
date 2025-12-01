@@ -18,11 +18,10 @@ export async function POST(req: Request) {
     // Default to 5 credits if not set
     const credits = currentCredits === undefined ? 5 : Number(currentCredits);
 
-    // If not Pro and out of credits, block
     if (!isPro && credits <= 0) {
       return NextResponse.json({ 
         error: "OUT_OF_CREDITS", 
-        message: "You have used all your free AI credits." 
+        message: "You have used all 5 free credits. Upgrade to continue." 
       }, { status: 403 });
     }
 
@@ -48,32 +47,16 @@ export async function POST(req: Request) {
 
         Task:
         Generate 6-8 highly specific, professional bullet points describing what this person will actually do.
-        
-        Requirements:
-        - Start each bullet with a strong action verb (e.g., "Drive", "Architect", "Collaborate").
-        - Cover a mix of strategic planning, execution, and collaboration duties.
-        - Return ONLY the bullet points formatted with "• ". Do not include introductory text.
+        Return ONLY the bullet points formatted with "• ".
       `;
     } else {
       userPrompt = `
         Completely rewrite and optimize the following Job Description for the role of "${title}".
-        
-        Original Text:
-        "${currentText}"
+        Original Text: "${currentText}"
 
         Task:
-        Produce a full, polished Job Description.
-
-        Structure:
-        1. **About the Role**: A compelling 2-3 sentence hook explaining why this role matters.
-        2. **What You'll Do**: 5-7 bullet points of responsibilities.
-        3. **What You Bring**: 5-7 bullet points of qualifications (skills/experience).
-        4. **Benefits & Perks**: A standard placeholder section for benefits.
-
-        Constraints:
-        - Remove any biased or toxic language from the original text.
-        - Ensure the tone is consistent and professional.
-        - Aim for approx 400-500 words.
+        Produce a full, polished Job Description (approx 400-500 words).
+        Structure: About the Role, What You'll Do, What You Bring, Benefits.
       `;
     }
 
@@ -88,7 +71,6 @@ export async function POST(req: Request) {
     
     const result = completion.choices[0].message.content;
 
-    // Only deduct credits if NOT Pro
     if (!isPro) {
       const client = await clerkClient();
       await client.users.updateUserMetadata(userId, {
