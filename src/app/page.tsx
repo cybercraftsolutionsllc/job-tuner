@@ -1,8 +1,21 @@
 import Link from "next/link";
 import JobEditor from "../components/JobEditor";
 import { SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
+import { auth, currentUser } from "@clerk/nextjs/server";
 
-export default function Home() {
+export default async function Home() {
+  const { userId } = await auth();
+  const user = await currentUser();
+  
+  // --- CONFIGURATION ---
+  // Replace this with your actual User ID to see the Admin link
+  const ADMIN_IDS = ["user_2tPZqX9Jq0qX9Jq0qX9Jq0qX9J"]; 
+  const isAdmin = userId && ADMIN_IDS.includes(userId);
+
+  // Get real user data to pass to the Client Component
+  const initialCredits = user?.privateMetadata?.credits ?? 5;
+  const initialPlan = user?.privateMetadata?.plan === 'pro' ? 'pro' : 'free';
+
   return (
     <main className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
       {/* Header / Nav */}
@@ -17,6 +30,16 @@ export default function Home() {
             <Link href="/faq" className="text-sm font-medium text-slate-500 hover:text-blue-600 transition-colors">
               How It Works
             </Link>
+
+            {/* ADMIN LINK (Only visible to you) */}
+            {isAdmin && (
+              <Link 
+                href="/admin" 
+                className="text-xs font-bold bg-slate-900 text-white px-3 py-1 rounded-full hover:bg-slate-700 transition-colors"
+              >
+                Admin Dashboard
+              </Link>
+            )}
             
             {/* AUTH BUTTONS */}
             <div className="flex items-center gap-4">
@@ -51,7 +74,11 @@ export default function Home() {
       {/* Main App Area */}
       <div className="flex-grow p-4 sm:p-8 -mt-8">
         <div className="max-w-7xl mx-auto">
-          <JobEditor />
+          {/* Pass server data to client component */}
+          <JobEditor 
+            initialCredits={Number(initialCredits)} 
+            initialPlan={String(initialPlan)} 
+          />
         </div>
       </div>
 

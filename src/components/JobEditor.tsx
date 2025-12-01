@@ -22,13 +22,24 @@ Requirements:
 -Thick skin
 `;
 
-export default function JobEditor() {
+interface JobEditorProps {
+  initialCredits: number;
+  initialPlan: string;
+}
+
+export default function JobEditor({ initialCredits, initialPlan }: JobEditorProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [report, setReport] = useState<ScoreReport | null>(null);
   const [viewMode, setViewMode] = useState<"edit" | "audit">("edit");
   const [toast, setToast] = useState<string | null>(null);
-  const [isProMode, setIsProMode] = useState(false);
+  
+  // Initialize with real data from props
+  const [credits, setCredits] = useState(initialCredits);
+  const [isProUser, setIsProUser] = useState(initialPlan === 'pro');
+  
+  // Toggle for "Pro Mode" switch in UI (visual only, logic checks real status)
+  const [isProMode, setIsProMode] = useState(false); 
   const [isLoading, setIsLoading] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
@@ -68,7 +79,7 @@ export default function JobEditor() {
         return; 
       }
       
-      // Handle Out of Credits - Trigger Modal
+      // Handle Out of Credits
       if (res.status === 403 && data.error === "OUT_OF_CREDITS") { 
         setShowUpgradeModal(true);
         setIsLoading(false); 
@@ -78,6 +89,12 @@ export default function JobEditor() {
       if (!res.ok) throw new Error("AI request failed");
 
       let cleanResult = data.result.replace(/\*\*/g, "").replace(/##/g, "").replace(/\n\n\n/g, "\n\n");
+      
+      // Update local state with new credits
+      if (typeof data.remainingCredits === 'number') {
+        setCredits(data.remainingCredits);
+      }
+
       const creditMsg = data.isPro ? "Unlimited" : `${data.remainingCredits ?? 0} left`;
       
       if (type === "expand") {
@@ -160,9 +177,9 @@ export default function JobEditor() {
               <button onClick={() => setShowUpgradeModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors">✕</button>
               
               <div className="mb-4 text-4xl">⚡</div>
-              <h3 className="text-2xl font-bold text-slate-800 mb-2">Out of Credits</h3>
+              <h3 className="text-2xl font-bold text-slate-800 mb-2">Upgrade to Pro</h3>
               <p className="text-slate-600 mb-6">
-                You've used your 5 free credits. Purchase a credit pack to continue using the Senior Recruiter AI.
+                Get more credits to keep optimizing your JDs with Senior Recruiter AI.
               </p>
               
               <div className="bg-slate-50 rounded-xl p-4 mb-6 text-left space-y-3">
@@ -180,7 +197,6 @@ export default function JobEditor() {
                   </div>
               </div>
 
-              {/* STRIPE PAYMENT BUTTON */}
               <a 
                 href={process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK || "#"}
                 target="_blank"
@@ -195,13 +211,13 @@ export default function JobEditor() {
                   onClick={() => setShowUpgradeModal(false)}
                   className="text-sm text-slate-400 hover:text-slate-600 font-medium underline decoration-slate-300 underline-offset-4"
               >
-                  No thanks, I'll write manually
+                  Maybe later
               </button>
           </div>
         </div>
       )}
 
-      {/* --- EDITOR UI --- */}
+      {/* --- LEFT COLUMN --- */}
       <div className="lg:col-span-8 flex flex-col gap-4">
         <div className="glass-panel p-3 rounded-t-xl border-b-0 flex flex-col xl:flex-row items-center justify-between gap-3 sticky top-0 z-20">
           <div className="flex bg-slate-100/50 p-1 rounded-lg w-full xl:w-auto backdrop-blur-sm">
@@ -214,6 +230,12 @@ export default function JobEditor() {
                <button onClick={() => setIsProMode(false)} className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-300 ${!isProMode ? 'bg-white text-slate-700 shadow-sm' : 'text-slate-400'}`}>Basic</button>
                <button onClick={() => setIsProMode(true)} className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-300 flex items-center gap-1 ${isProMode ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md' : 'text-slate-400'}`}><span>PRO</span><span className="text-[10px]">AI</span></button>
              </div>
+             
+             {/* NEW: Explicit Upgrade Button */}
+             <button onClick={() => setShowUpgradeModal(true)} className="px-3 py-1.5 rounded text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200 transition-colors flex items-center gap-1">
+                ⚡ Upgrade ({credits} credits)
+             </button>
+
              <div className="w-px bg-slate-300 mx-1 hidden xl:block h-6"></div>
              <button onClick={handleExpand} className={`px-3 py-1.5 rounded text-xs font-bold transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center gap-1 border ${isProMode ? "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100" : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"}`} title={isProMode ? "Generate specific content with AI" : "Add generic content from library"}>{isProMode ? "🤖 AI Expand" : "➕ Expand JD"}</button>
              <button onClick={handleAutoTune} disabled={description.length < 10} className={`px-3 py-1.5 rounded text-xs font-bold shadow-sm transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center gap-1 disabled:opacity-50 ${isProMode ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700" : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700"}`}>{isProMode ? "✨ AI Rewrite" : "✨ Auto-Tune"}</button>
@@ -242,6 +264,7 @@ export default function JobEditor() {
         </div>
       </div>
 
+      {/* --- RIGHT COLUMN --- */}
       <div className="lg:col-span-4">
         <div className="sticky top-24 flex flex-col gap-6">
           <div className={`p-6 rounded-xl shadow-lg border backdrop-blur-md ${report ? getScoreBg(report.overallScore) : 'glass-panel'}`}>
@@ -274,6 +297,7 @@ export default function JobEditor() {
             )}
           </div>
           <div className="glass-panel rounded-xl flex flex-col max-h-[600px]">
+             {/* Issues List Code (Same as before) */}
              <div className="p-4 border-b border-slate-100 bg-slate-50/50 rounded-t-xl flex justify-between items-center">
               <h3 className="font-bold text-slate-700">Audit Findings</h3>
               <span className="bg-slate-200 text-slate-600 text-xs font-bold px-2 py-1 rounded-full">{report?.issues.length || 0}</span>
