@@ -98,7 +98,6 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
 
       let cleanResult = data.result.replace(/##/g, "").replace(/\n\n\n/g, "\n\n");
       
-      // Update credits only if remainingCredits is a valid number
       if (typeof data.remainingCredits === 'number') {
         setCredits(data.remainingCredits);
       }
@@ -143,6 +142,20 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
       setToast("🚀 Standard content added.");
       setViewMode("edit");
     }
+  };
+
+  const handleCopy = async () => { await navigator.clipboard.writeText(`${title}\n\n${description}`); setToast("📋 Copied!"); };
+  const handleExportPDF = () => { if(title || description) { downloadPDF(title, description); setToast("📄 PDF Downloading..."); } };
+  const handleLoadSample = () => { setTitle(SAMPLE_TITLE); setDescription(SAMPLE_DESC.trim()); setViewMode("audit"); };
+  
+  // *** THIS IS THE FUNCTION THAT WAS CAUSING THE ERROR ***
+  // Ensure it is defined before the return statement
+  const handleInsertTemplate = () => { 
+    if (description.length > 50 && !confirm("Overwrite text?")) return; 
+    setTitle("Senior [Role Name]"); 
+    setDescription(GOLD_STANDARD_TEMPLATE); 
+    setToast("📋 Template Inserted."); 
+    setViewMode("edit"); 
   };
 
   const handleClear = () => { 
