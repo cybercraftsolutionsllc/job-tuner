@@ -8,11 +8,12 @@ export default async function Home() {
   const user = await currentUser();
   
   // --- CONFIGURATION ---
-  // Replace this with your actual User ID to see the Admin link
+  // Replace with your actual Clerk User ID to see the Admin link
   const ADMIN_IDS = ["user_2tPZqX9Jq0qX9Jq0qX9Jq0qX9J"]; 
   const isAdmin = userId && ADMIN_IDS.includes(userId);
 
   // Get real user data to pass to the Client Component
+  // Default to 5 credits for new users if metadata is empty
   const initialCredits = user?.privateMetadata?.credits ?? 5;
   const initialPlan = user?.privateMetadata?.plan === 'pro' ? 'pro' : 'free';
 
