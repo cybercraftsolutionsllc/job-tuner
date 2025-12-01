@@ -84,7 +84,7 @@ export function autoTuneText(text: string): string {
   newText = newText.replace(/\s+([.,!?:])/g, '$1');
 
   // Fix Headers spacing (Ensure newline before Requirements:)
-  const headers = ["Requirements", "Responsibilities", "Qualifications", "Benefits", "About Us"];
+  const headers = ["Requirements", "Responsibilities", "Qualifications", "Benefits", "About Us", "What You'll Do", "What You Bring"];
   headers.forEach(header => {
     const regex = new RegExp(`(?<!\n\n)(${header}:?)`, 'gi');
     newText = newText.replace(regex, '\n\n$1');
@@ -96,26 +96,36 @@ export function autoTuneText(text: string): string {
   return newText;
 }
 
-export const GOLD_STANDARD_TEMPLATE = `JOB TITLE: [Insert Title]
+export const GOLD_STANDARD_TEMPLATE = `JOB TITLE: Senior [Role Name]
+
+ABOUT THE COMPANY:
+At [Company Name], we are on a mission to [Mission Statement]. We value innovation, collaboration, and diversity. We are looking for a driven [Role Name] to join our growing team and help us build the future of [Industry].
 
 ABOUT THE ROLE:
-[2-3 sentences explaining the mission of this role. Why does it exist?]
+As a Senior [Role Name], you will play a pivotal role in shaping our [Department/Product]. You will work closely with cross-functional teams to drive strategy and execution. This is a unique opportunity to make a high-impact contribution in a fast-paced environment.
 
-KEY RESPONSIBILITIES:
-• [Action verb] [Specific task] [Outcome]
-• Collaborate with cross-functional teams to...
-• Manage the lifecycle of...
-• Analyze data to drive...
+WHAT YOU'LL DO:
+• Lead the design and implementation of [Key Project/Area].
+• Collaborate with product management, design, and engineering to define requirements.
+• Mentor junior team members and foster a culture of continuous learning.
+• Analyze data and user feedback to identify opportunities for improvement.
+• Develop and maintain scalable processes that support business growth.
+• Troubleshoot complex issues and propose effective solutions.
 
-QUALIFICATIONS:
-• [Number] years of experience in...
-• Proficiency with [Tool/Language]
-• Strong understanding of...
+WHAT YOU BRING:
+• [Number]+ years of experience in [Field] or a related role.
+• Proven track record of delivering high-quality results on time.
+• Strong proficiency in [Key Skill 1], [Key Skill 2], and [Key Skill 3].
+• Excellent communication and interpersonal skills.
+• Ability to thrive in an ambiguous and dynamic environment.
+• Bachelor's degree in [Field] or equivalent practical experience.
 
 BENEFITS & PERKS:
-• Competitive salary range: $[X]k - $[Y]k
-• Comprehensive health, dental, and vision insurance
-• Remote work options / Flexible schedule
-• Professional development budget
+• Competitive salary and equity package.
+• Comprehensive health, dental, and vision insurance.
+• Unlimited Paid Time Off (PTO) and flexible work hours.
+• Remote-first culture with optional coworking stipends.
+• Annual learning and development budget.
+• 401(k) matching program.
 
-We are an equal opportunity employer and value diversity at our company.`;
+[Company Name] is an equal opportunity employer. We celebrate diversity and are committed to creating an inclusive environment for all employees.`;
