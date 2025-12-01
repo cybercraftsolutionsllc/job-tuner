@@ -1,7 +1,7 @@
 import riskDictionary from '../data/risk_dictionary.json';
 import roleTemplates from '../data/role_templates.json';
 
-// --- EXISTING REPLACEMENTS (Keep these) ---
+// --- DICTIONARY ---
 const REPLACEMENTS: Record<string, string> = {
   "ninja": "Specialist",
   "guru": "Subject Matter Expert",
@@ -30,37 +30,31 @@ const REPLACEMENTS: Record<string, string> = {
   "work hard play hard": "collaborative culture",
 };
 
-// --- NEW EXPANSION LOGIC ---
+// --- LOGIC ---
 
 export function getSuggestionsForTitle(title: string): string[] {
   const lowerTitle = title.toLowerCase();
   let suggestions: string[] = [];
 
-  // Check specific roles
-  // We explicitly cast roleTemplates to any to iterate keys
   const templates = roleTemplates as any;
-  
   Object.keys(templates).forEach(key => {
     if (key === 'general') return;
     const roleData = templates[key];
-    // If the title matches any keyword for this role
     if (roleData.keywords.some((k: string) => lowerTitle.includes(k))) {
       suggestions = [...suggestions, ...roleData.responsibilities];
     }
   });
 
-  // Always add general benefits if list is short
   if (suggestions.length < 3) {
     suggestions = [...suggestions, ...templates.general.responsibilities];
   }
-
   return suggestions;
 }
 
 export function autoTuneText(text: string): string {
   let newText = text;
 
-  // 1. SMART REPLACEMENTS
+  // 1. SMART WORD REPLACEMENTS
   Object.keys(REPLACEMENTS).forEach((badWord) => {
     const regex = new RegExp(`\\b${badWord}\\b`, 'gi');
     newText = newText.replace(regex, (match) => {
@@ -72,19 +66,32 @@ export function autoTuneText(text: string): string {
     });
   });
 
-  // 2. FORMATTING FIXES
-  newText = newText.replace(/^([•\-\*])([a-zA-Z])/gm, '$1 $2');
-  newText = newText.replace(/<li>/gi, '\n• ');
-  newText = newText.replace(/<\/li>/gi, '');
-  newText = newText.replace(/<ul>/gi, '\n');
-  newText = newText.replace(/<\/ul>/gi, '\n');
+  // 2. GRAMMAR & FORMATTING SCRUBBER
+  
+  // Fix "a energetic" -> "an energetic" (Basic Vowel Check)
+  newText = newText.replace(/\ba ([aeiou])/gi, 'an $1');
 
-  // Fix Headers spacing
+  // Fix Bullet Points (Add space if missing: "-Task" -> "- Task")
+  newText = newText.replace(/^([•\-\*])([a-zA-Z])/gm, '$1 $2');
+  
+  // Cleanup HTML artifacts
+  newText = newText.replace(/<li>/gi, '\n• ').replace(/<\/li>/gi, '').replace(/<ul>/gi, '\n').replace(/<\/ul>/gi, '\n');
+
+  // Fix Double Spacing
+  newText = newText.replace(/  +/g, ' ');
+
+  // Fix Punctuation Spacing ( "word ." -> "word.")
+  newText = newText.replace(/\s+([.,!?:])/g, '$1');
+
+  // Fix Headers spacing (Ensure newline before Requirements:)
   const headers = ["Requirements", "Responsibilities", "Qualifications", "Benefits", "About Us"];
   headers.forEach(header => {
     const regex = new RegExp(`(?<!\n\n)(${header}:?)`, 'gi');
     newText = newText.replace(regex, '\n\n$1');
   });
+
+  // Capitalize start of sentences (Basic)
+  newText = newText.replace(/(^\s*|[.!?]\s+)([a-z])/g, (match) => match.toUpperCase());
 
   return newText;
 }

@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import confetti from "canvas-confetti";
 import { analyzeJobDescription, ScoreReport } from "../utils/optimizer";
 import { autoTuneText, GOLD_STANDARD_TEMPLATE, getSuggestionsForTitle } from "../utils/fixer";
 import { downloadPDF, shareViaEmail } from "../utils/exporter";
 import TextHighlighter from "./TextHighlighter";
 
-// Sample Data
 const SAMPLE_TITLE = "Rockstar Ninja Developer Needed ASAP!!!";
 const SAMPLE_DESC = `
 We are looking for a young, energetic digital native to join our fast-paced family! You must be willing to wear many hats and hustle 24/7. 
@@ -28,19 +28,21 @@ export default function JobEditor() {
   const [report, setReport] = useState<ScoreReport | null>(null);
   const [viewMode, setViewMode] = useState<"edit" | "audit">("edit");
   const [toast, setToast] = useState<string | null>(null);
-  
-  // PRO / AI States
   const [isProMode, setIsProMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Analysis Engine
   useEffect(() => {
     if (description.trim().length > 0) {
       const result = analyzeJobDescription(description, title);
       setReport(result);
+      if (result.overallScore >= 90 && viewMode === 'audit') {
+        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+      }
     } else {
       setReport(null);
     }
-  }, [title, description]);
+  }, [title, description, viewMode]);
 
   useEffect(() => {
     if (toast) {
@@ -49,7 +51,6 @@ export default function JobEditor() {
     }
   }, [toast]);
 
-  // --- AI HANDLER ---
   const callAI = async (type: "expand" | "rewrite") => {
     setIsLoading(true);
     try {
@@ -58,27 +59,13 @@ export default function JobEditor() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, currentText: description, type }),
       });
-
       const data = await res.json();
 
-      // Handle Errors
-      if (res.status === 401) {
-        setToast("🔒 Please Sign In (Top Right) to use AI.");
-        setIsLoading(false);
-        return;
-      }
-      if (res.status === 403 && data.error === "OUT_OF_CREDITS") {
-        setToast("⛔ Out of Free Credits! Please upgrade.");
-        setIsLoading(false);
-        return;
-      }
+      if (res.status === 401) { setToast("🔒 Please Sign In (Top Right) to use AI."); setIsLoading(false); return; }
+      if (res.status === 403 && data.error === "OUT_OF_CREDITS") { setToast("⛔ Out of Free Credits! Please upgrade."); setIsLoading(false); return; }
       if (!res.ok) throw new Error("AI request failed");
 
-      // Success
-      let cleanResult = data.result
-        .replace(/\*\*/g, "")
-        .replace(/##/g, "")
-        .replace(/\n\n\n/g, "\n\n");
+      let cleanResult = data.result.replace(/\*\*/g, "").replace(/##/g, "").replace(/\n\n\n/g, "\n\n");
       
       if (type === "expand") {
         setDescription((prev) => `${prev}\n\n${cleanResult}`);
@@ -87,7 +74,6 @@ export default function JobEditor() {
         setDescription(cleanResult);
         setToast(`🤖 AI Rewrite Complete! (${data.remainingCredits} credits left)`);
       }
-
     } catch (error) {
       console.error(error);
       setToast("❌ System Error. Try again later.");
@@ -97,7 +83,6 @@ export default function JobEditor() {
     }
   };
 
-  // --- ACTIONS ---
   const handleAutoTune = () => {
     if (isProMode) {
       if (!confirm("Pro Mode: This will use 1 Credit to AI rewrite your text. Continue?")) return;
@@ -105,24 +90,18 @@ export default function JobEditor() {
     } else {
       const fixed = autoTuneText(description);
       setDescription(fixed);
-      setToast("✨ Text Auto-Tuned (Basic).");
+      setToast("✨ Text Auto-Tuned (Basic Grammar & Swaps).");
       setViewMode("edit");
     }
   };
 
   const handleExpand = () => {
-    if (title.length < 3) {
-      setToast("⚠️ Please enter a Job Title first.");
-      return;
-    }
+    if (title.length < 3) { setToast("⚠️ Please enter a Job Title first."); return; }
     if (isProMode) {
       callAI("expand");
     } else {
       const suggestions = getSuggestionsForTitle(title);
-      if (suggestions.length === 0) {
-        setToast("⚠️ Free Library: No match. Enable PRO for AI.");
-        return;
-      }
+      if (suggestions.length === 0) { setToast("⚠️ Free Library: No match. Enable PRO for AI."); return; }
       const bulletText = suggestions.map((s) => `• ${s}`).join("\n");
       setDescription((prev) => `${prev}\n\nSUGGESTED RESPONSIBILITIES:\n${bulletText}`);
       setToast("🚀 Standard content added.");
@@ -130,99 +109,77 @@ export default function JobEditor() {
     }
   };
 
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(`${title}\n\n${description}`);
-    setToast("📋 Full JD Copied to Clipboard!");
-  };
-
-  const handleExportPDF = () => { 
-    if(title || description) { 
-        downloadPDF(title, description); 
-        setToast("📄 PDF Downloading..."); 
-    } 
-  };
-
+  const handleCopy = async () => { await navigator.clipboard.writeText(`${title}\n\n${description}`); setToast("📋 Full JD Copied to Clipboard!"); };
+  const handleExportPDF = () => { if(title || description) { downloadPDF(title, description); setToast("📄 PDF Downloading..."); } };
   const handleLoadSample = () => { setTitle(SAMPLE_TITLE); setDescription(SAMPLE_DESC.trim()); setViewMode("audit"); };
-  const handleInsertTemplate = () => { 
-    if (description.length > 50 && !confirm("Overwrite text?")) return;
-    setTitle("Senior [Role Name]"); setDescription(GOLD_STANDARD_TEMPLATE); setToast("📋 Template Inserted."); setViewMode("edit"); 
-  };
+  const handleInsertTemplate = () => { if (description.length > 50 && !confirm("Overwrite text?")) return; setTitle("Senior [Role Name]"); setDescription(GOLD_STANDARD_TEMPLATE); setToast("📋 Template Inserted."); setViewMode("edit"); };
   const handleClear = () => { setTitle(""); setDescription(""); setViewMode("edit"); };
-
   const getScoreColor = (score: number) => { if (score >= 80) return "text-emerald-600"; if (score >= 50) return "text-amber-500"; return "text-rose-600"; };
-  const getScoreBg = (score: number) => { if (score >= 80) return "bg-emerald-50 border-emerald-200"; if (score >= 50) return "bg-amber-50 border-amber-200"; return "bg-rose-50 border-rose-200"; };
+  const getScoreBg = (score: number) => { 
+      if (score >= 80) return "bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200"; 
+      if (score >= 50) return "bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200"; 
+      return "bg-gradient-to-br from-rose-50 to-red-50 border-rose-200"; 
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full relative">
-      
-      {/* LOADING OVERLAY */}
       {isLoading && (
-        <div className="absolute inset-0 z-50 bg-white/80 flex flex-col items-center justify-center backdrop-blur-sm rounded-xl">
+        <div className="absolute inset-0 z-50 bg-white/80 flex flex-col items-center justify-center backdrop-blur-md rounded-xl">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
           <p className="text-indigo-800 font-bold animate-pulse">AI is writing...</p>
         </div>
       )}
-
-      {/* TOAST */}
       {toast && (
-        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-2 animate-bounce-short">
+        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-2 animate-bounce-short">
           <span>{toast}</span>
         </div>
       )}
 
-      {/* LEFT COLUMN: EDITOR */}
+      {/* LEFT COLUMN */}
       <div className="lg:col-span-8 flex flex-col gap-4">
-        {/* Toolbar */}
-        <div className="bg-white p-3 rounded-t-xl border-b border-slate-200 shadow-sm flex flex-col xl:flex-row items-center justify-between gap-3">
-          <div className="flex bg-slate-100 p-1 rounded-lg w-full xl:w-auto">
-            <button onClick={() => setViewMode("edit")} className={`flex-1 xl:flex-none px-4 py-1.5 text-sm font-semibold rounded-md transition-all ${viewMode === "edit" ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>✏️ Write</button>
-            <button onClick={() => setViewMode("audit")} disabled={!report} className={`flex-1 xl:flex-none px-4 py-1.5 text-sm font-semibold rounded-md transition-all ${viewMode === "audit" ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-700 disabled:opacity-50"}`}>👁️ Audit View</button>
+        <div className="glass-panel p-3 rounded-t-xl border-b-0 flex flex-col xl:flex-row items-center justify-between gap-3 sticky top-0 z-20">
+          <div className="flex bg-slate-100/50 p-1 rounded-lg w-full xl:w-auto backdrop-blur-sm">
+            <button onClick={() => setViewMode("edit")} className={`flex-1 xl:flex-none px-4 py-1.5 text-sm font-semibold rounded-md transition-all duration-300 ${viewMode === "edit" ? "bg-white text-blue-600 shadow-md" : "text-slate-500 hover:text-slate-700"}`}>✏️ Write</button>
+            <button onClick={() => setViewMode("audit")} disabled={!report} className={`flex-1 xl:flex-none px-4 py-1.5 text-sm font-semibold rounded-md transition-all duration-300 ${viewMode === "audit" ? "bg-white text-blue-600 shadow-md" : "text-slate-500 hover:text-slate-700 disabled:opacity-50"} ${report && report.issues.length > 0 ? 'animate-pulse text-rose-500' : ''}`}>👁️ Audit View</button>
           </div>
 
           <div className="flex flex-wrap justify-center items-center gap-2 w-full xl:w-auto">
-             {/* PRO TOGGLE */}
-             <div className="flex items-center mr-2 bg-slate-100 rounded-full px-1 py-1 border border-slate-200">
-               <button onClick={() => setIsProMode(false)} className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${!isProMode ? 'bg-white text-slate-700 shadow-sm' : 'text-slate-400'}`}>Free</button>
-               <button onClick={() => setIsProMode(true)} className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1 ${isProMode ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-sm' : 'text-slate-400'}`}><span>PRO</span><span className="text-[10px]">AI</span></button>
+             <div className="flex items-center mr-2 bg-slate-100/50 rounded-full px-1 py-1 border border-slate-200/50">
+               <button onClick={() => setIsProMode(false)} className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-300 ${!isProMode ? 'bg-white text-slate-700 shadow-sm' : 'text-slate-400'}`}>Free</button>
+               <button onClick={() => setIsProMode(true)} className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-300 flex items-center gap-1 ${isProMode ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md' : 'text-slate-400'}`}><span>PRO</span><span className="text-[10px]">AI</span></button>
              </div>
              <div className="w-px bg-slate-300 mx-1 hidden xl:block h-6"></div>
-             <button onClick={handleExpand} className={`px-3 py-1.5 rounded text-xs font-bold transition-colors flex items-center gap-1 border ${isProMode ? "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100" : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"}`} title={isProMode ? "Generate specific content with AI" : "Add generic content from library"}>{isProMode ? "🤖 AI Expand" : "➕ Expand JD"}</button>
-             <button onClick={handleAutoTune} disabled={description.length < 10} className={`px-3 py-1.5 rounded text-xs font-bold shadow-sm transition-all flex items-center gap-1 disabled:opacity-50 ${isProMode ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700" : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700"}`}>{isProMode ? "✨ AI Rewrite" : "✨ Auto-Tune"}</button>
+             <button onClick={handleExpand} className={`px-3 py-1.5 rounded text-xs font-bold transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center gap-1 border ${isProMode ? "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100" : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"}`} title={isProMode ? "Generate specific content with AI" : "Add generic content from library"}>{isProMode ? "🤖 AI Expand" : "➕ Expand JD"}</button>
+             <button onClick={handleAutoTune} disabled={description.length < 10} className={`px-3 py-1.5 rounded text-xs font-bold shadow-sm transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center gap-1 disabled:opacity-50 ${isProMode ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700" : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700"}`}>{isProMode ? "✨ AI Rewrite" : "✨ Auto-Tune"}</button>
              <div className="w-px bg-slate-300 mx-1 hidden xl:block h-6"></div>
-             <button onClick={handleInsertTemplate} className="btn-secondary" title="Template">📋</button>
-             <button onClick={handleLoadSample} className="btn-secondary">Demo</button>
-             <button onClick={handleClear} className="btn-secondary text-red-500 hover:bg-red-50 hover:border-red-200">Clear</button>
+             <button onClick={handleInsertTemplate} className="btn-secondary transition-transform hover:scale-105" title="Template">📋</button>
+             <button onClick={handleLoadSample} className="btn-secondary transition-transform hover:scale-105">Demo</button>
+             <button onClick={handleClear} className="btn-secondary text-red-500 hover:bg-red-50 hover:border-red-200 transition-transform hover:scale-105">Clear</button>
           </div>
         </div>
 
-        {/* Editor */}
-        <div className="bg-white rounded-b-xl shadow-lg border-x border-b border-slate-200 min-h-[600px] flex flex-col relative overflow-hidden">
+        <div className="glass-panel rounded-b-xl min-h-[600px] flex flex-col relative overflow-hidden border-t-0">
            <div className="p-6 border-b border-slate-100 bg-slate-50/30">
              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Job Title <span className="text-slate-300 font-normal">(Used for generation)</span></label>
-             <input type="text" suppressHydrationWarning={true} className="w-full bg-white border border-slate-200 p-3 rounded-lg text-lg font-semibold text-slate-900 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder="e.g. Senior Product Manager" value={title} onChange={(e) => setTitle(e.target.value)} />
+             <input type="text" suppressHydrationWarning={true} className="w-full bg-white/50 backdrop-blur-sm border border-slate-200 p-3 rounded-lg text-lg font-semibold text-slate-900 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder="e.g. Senior Product Manager" value={title} onChange={(e) => setTitle(e.target.value)} />
            </div>
            <div className="flex-grow flex flex-col relative">
              <div className="px-6 pt-4 pb-2 flex justify-between items-end"><label className="block text-xs font-bold text-slate-400 uppercase tracking-wide">Job Description</label></div>
              {viewMode === "edit" ? (
-               <textarea suppressHydrationWarning={true} className="w-full h-full p-6 resize-none focus:outline-none text-slate-700 leading-relaxed font-sans placeholder-slate-300 text-base" placeholder="Paste your JD here..." value={description} onChange={(e) => setDescription(e.target.value)} />
+               <textarea suppressHydrationWarning={true} className="w-full h-full p-6 resize-none focus:outline-none text-slate-700 leading-relaxed font-sans placeholder-slate-300 text-base bg-transparent" placeholder="Paste your JD here..." value={description} onChange={(e) => setDescription(e.target.value)} />
              ) : (
                <div className="w-full h-full p-6 overflow-y-auto bg-slate-50/50">
                  <TextHighlighter text={description} issues={report?.issues || []} />
                </div>
              )}
            </div>
-            {viewMode === 'edit' && description.length > 50 && (
-                <div className="absolute bottom-6 right-6">
-                    <button onClick={() => setViewMode('audit')} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-full shadow-xl flex items-center gap-2 transform transition-transform hover:scale-105 active:scale-95"><span>Analyze Score</span><span>👉</span></button>
-                </div>
-            )}
         </div>
       </div>
 
-      {/* RIGHT COLUMN: SCORECARD & BUTTONS */}
+      {/* RIGHT COLUMN */}
       <div className="lg:col-span-4">
         <div className="sticky top-24 flex flex-col gap-6">
-          <div className={`p-6 rounded-xl shadow-lg border ${report ? getScoreBg(report.overallScore) : 'bg-white border-slate-200'}`}>
+          <div className={`p-6 rounded-xl shadow-lg border backdrop-blur-md ${report ? getScoreBg(report.overallScore) : 'glass-panel'}`}>
             <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">Performance Score</h2>
             {report ? (
               <div>
@@ -238,38 +195,29 @@ export default function JobEditor() {
                   <ScoreBar label="Conversion (Readability)" score={report.conversionScore} />
                   <ScoreBar label="Legal Risk" score={report.riskScore} />
                 </div>
-                
-                {/* BIG EXPORT BUTTONS */}
                 <div className="grid grid-cols-3 gap-2 pt-4 border-t border-slate-200/50">
-                  <button onClick={handleExportPDF} className="flex flex-col items-center justify-center gap-1 py-3 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold hover:bg-white hover:border-red-200 hover:text-red-600 transition-all shadow-sm">
-                    <span className="text-lg">📄</span> PDF
-                  </button>
-                  <button onClick={() => shareViaEmail(title, description)} className="flex flex-col items-center justify-center gap-1 py-3 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold hover:bg-white hover:border-blue-200 hover:text-blue-600 transition-all shadow-sm">
-                    <span className="text-lg">✉️</span> Email
-                  </button>
-                  <button onClick={handleCopy} className="flex flex-col items-center justify-center gap-1 py-3 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold hover:bg-white hover:border-emerald-200 hover:text-emerald-600 transition-all shadow-sm">
-                    <span className="text-lg">📋</span> Copy
-                  </button>
+                  <button onClick={handleExportPDF} className="flex flex-col items-center justify-center gap-1 py-3 rounded-lg bg-white/50 border border-slate-200 text-slate-700 text-xs font-bold hover:bg-white hover:border-red-200 hover:text-red-600 transition-all shadow-sm transform hover:-translate-y-1"><span className="text-lg">📄</span> PDF</button>
+                  <button onClick={() => shareViaEmail(title, description)} className="flex flex-col items-center justify-center gap-1 py-3 rounded-lg bg-white/50 border border-slate-200 text-slate-700 text-xs font-bold hover:bg-white hover:border-blue-200 hover:text-blue-600 transition-all shadow-sm transform hover:-translate-y-1"><span className="text-lg">✉️</span> Email</button>
+                  <button onClick={handleCopy} className="flex flex-col items-center justify-center gap-1 py-3 rounded-lg bg-white/50 border border-slate-200 text-slate-700 text-xs font-bold hover:bg-white hover:border-emerald-200 hover:text-emerald-600 transition-all shadow-sm transform hover:-translate-y-1"><span className="text-lg">📋</span> Copy</button>
                 </div>
-
               </div>
             ) : (
               <div className="py-12 text-center">
-                <div className="text-4xl mb-3">👇</div>
+                <div className="text-4xl mb-3 animate-bounce">👇</div>
                 <p className="text-slate-400 font-medium">Paste text to begin...</p>
               </div>
             )}
           </div>
-
-          <div className="bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col max-h-[600px]">
-            <div className="p-4 border-b border-slate-100 bg-slate-50 rounded-t-xl flex justify-between items-center">
+          <div className="glass-panel rounded-xl flex flex-col max-h-[600px]">
+             {/* Issues List Code (Same as before) */}
+             <div className="p-4 border-b border-slate-100 bg-slate-50/50 rounded-t-xl flex justify-between items-center">
               <h3 className="font-bold text-slate-700">Audit Findings</h3>
               <span className="bg-slate-200 text-slate-600 text-xs font-bold px-2 py-1 rounded-full">{report?.issues.length || 0}</span>
             </div>
             <div className="overflow-y-auto p-2 space-y-2 custom-scrollbar flex-grow min-h-[200px]">
               {report && report.issues.length > 0 ? (
                 report.issues.map((issue) => (
-                  <div key={issue.id} className="p-3 bg-white rounded border border-slate-100 shadow-sm">
+                  <div key={issue.id} className="p-3 bg-white/80 rounded border border-slate-100 shadow-sm transition-transform hover:scale-[1.02]">
                     <div className="flex justify-between items-start mb-1 gap-2">
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide flex-shrink-0 ${issue.severity === 'high' ? 'bg-red-100 text-red-700' : issue.severity === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>{issue.type}</span>
                        {issue.context && <span className="text-rose-600 font-mono text-xs bg-rose-50 px-1 rounded truncate max-w-[150px]">"{issue.context}"</span>}
@@ -299,8 +247,8 @@ function ScoreBar({ label, score }: { label: string; score: number }) {
         <span className="font-medium text-slate-500">{label}</span>
         <span className="font-bold text-slate-700">{score}%</span>
       </div>
-      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-        <div className={`h-full ${getColor(score)} transition-all duration-1000 ease-out`} style={{ width: `${score}%` }} />
+      <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+        <div className={`h-full ${getColor(score)} transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(0,0,0,0.1)]`} style={{ width: `${score}%` }} />
       </div>
     </div>
   );

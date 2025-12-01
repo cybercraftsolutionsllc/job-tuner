@@ -3,24 +3,35 @@
 @tailwind utilities;
 
 :root {
-  --background: #f8fafc; /* Light Gray/White Background */
-  --foreground: #0f172a; /* Dark Blue/Black Text */
+  --background: #f8fafc;
+  --foreground: #0f172a;
 }
-
-/* DELETE the @media (prefers-color-scheme: dark) block completely */
 
 body {
-  background: var(--background);
   color: var(--foreground);
+  background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
+  /* subtle mesh gradient background */
+  background-image: 
+    radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+    radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
+    radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
+  background-attachment: fixed;
+  background-size: cover;
+  min-height: 100vh;
 }
 
-/* Custom Scrollbar Utilities */
+/* Glassmorphism Utilities */
+.glass-panel {
+  @apply bg-white/90 backdrop-blur-lg border border-white/20 shadow-xl;
+}
+
+/* Custom Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: #cbd5e1;
@@ -29,6 +40,13 @@ body {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
-.btn-secondary {
-  @apply whitespace-nowrap text-xs font-medium text-slate-600 hover:bg-slate-100 px-3 py-1.5 rounded border border-slate-200 transition-colors;
+
+/* Animations */
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
+  100% { transform: translateY(0px); }
+}
+.animate-float {
+  animation: float 6s ease-in-out infinite;
 }
