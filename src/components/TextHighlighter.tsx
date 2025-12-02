@@ -5,7 +5,7 @@ import { escapeRegExp } from "../utils/sanitizer";
 interface HighlighterProps {
   text: string;
   issues: Issue[];
-  onFix?: (issue: Issue) => void; // NEW: Callback when issue is clicked
+  onFix?: (issue: Issue) => void;
 }
 
 export default function TextHighlighter({ text, issues, onFix }: HighlighterProps) {
@@ -18,64 +18,64 @@ export default function TextHighlighter({ text, issues, onFix }: HighlighterProp
     );
   }
 
-  // We need to parse the text into segments to make them interactive React elements
-  // instead of just dangerouslySetInnerHTML strings.
-  
-  // 1. Sort issues by position/length to handle processing
-  const uniqueIssues = issues.filter(i => i.context); // Only highlight issues with specific words
-  
-  // For simplicity in this React implementation without a complex AST:
-  // We will split the text by the issue keywords and map them to spans.
-  
-  const parts = [];
-  let lastIndex = 0;
-  
-  // Create a regex that matches any of the issue contexts
-  if (uniqueIssues.length === 0) {
-    return <div className="prose max-w-none font-sans text-slate-700 leading-relaxed whitespace-pre-wrap">{text}</div>;
-  }
+  // 1. Basic HTML Escaping to prevent XSS
+  let htmlContent = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 
-  // Construct a master regex for all issues
-  const pattern = new RegExp(
-    `(${uniqueIssues.map(i => `\\b${escapeRegExp(i.context!)}\\b`).join("|")})`,
-    "gi"
-  );
+  // 2. RENDER MARKDOWN BOLD (**text**) - Improved regex for multiple occurrences
+  // This turns AI headers into nice bold text. using [^*] ensures we match content inside **
+  htmlContent = htmlContent.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-slate-900">$1</strong>');
+  
+  // Render Markdown Headers (## Header)
+  htmlContent = htmlContent.replace(/^##\s+(.*)$/gm, '<h3 class="text-lg font-bold text-slate-800 mt-4 mb-2">$1</h3>');
 
-  const splitText = text.split(pattern);
+  // 3. Handle Newlines
+  htmlContent = htmlContent.replace(/\n/g, "<br/>");
+
+  // 4. HIGHLIGHT ISSUES
+  // Sort by length to avoid partial replacements (longest first)
+  const sortedIssues = [...issues].sort((a, b) => (b.context?.length || 0) - (a.context?.length || 0));
+
+  // Use a temporary placeholder strategy if performance becomes an issue with large texts, 
+  // but for JDs, direct replacement is usually fine.
+  sortedIssues.forEach((issue) => {
+    if (!issue.context) return; 
+
+    const colorClass =
+      issue.severity === "high"
+        ? "bg-red-100 border-b-2 border-red-500 text-red-900"
+        : issue.severity === "medium"
+        ? "bg-amber-100 border-b-2 border-amber-500 text-amber-900"
+        : "bg-blue-50 border-b-2 border-blue-400 text-blue-900";
+
+    const safeWord = escapeRegExp(issue.context);
+    // Only match whole words/phrases to prevent highlighting inside other words
+    // The negative lookahead/behind ensures we aren't inside an HTML tag attribute
+    const regex = new RegExp(`(?<!<[^>]*)(\\b${safeWord}\\b)`, "gi");
+
+    htmlContent = htmlContent.replace(
+      regex,
+      `<span class="${colorClass} px-1 rounded cursor-help transition-colors hover:opacity-80 relative group" title="${issue.message}" data-fixable="true">$1</span>`
+    );
+  });
 
   return (
-    <div className="prose max-w-none font-sans text-slate-700 leading-relaxed whitespace-pre-wrap">
-      {splitText.map((part, i) => {
-        // Check if this part matches an issue
-        const matchedIssue = uniqueIssues.find(
-          issue => issue.context?.toLowerCase() === part.toLowerCase()
-        );
-
-        if (matchedIssue) {
-          const colorClass =
-            matchedIssue.severity === "high"
-              ? "bg-red-100 text-red-800 border-b-2 border-red-300"
-              : matchedIssue.severity === "medium"
-              ? "bg-amber-100 text-amber-800 border-b-2 border-amber-300"
-              : "bg-blue-50 text-blue-800 border-b-2 border-blue-200";
-
-          return (
-            <span
-              key={i}
-              className={`${colorClass} px-1 rounded cursor-pointer hover:opacity-75 relative group`}
-              onClick={() => onFix && onFix(matchedIssue)}
-              title={`Click to fix: ${matchedIssue.message}`}
-            >
-              {part}
-              {/* Tooltip hint */}
-              <span className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap mb-1 z-10">
-                Fix this
-              </span>
-            </span>
-          );
+    <div
+      className="prose max-w-none font-sans text-slate-700 leading-relaxed whitespace-pre-wrap selection:bg-blue-100 selection:text-blue-900"
+      dangerouslySetInnerHTML={{ __html: htmlContent }}
+      onClick={(e) => {
+        // Event delegation for dynamically inserted spans
+        const target = e.target as HTMLElement;
+        if (target.dataset.fixable === "true" && onFix) {
+           // We need to find the issue object that corresponds to this text
+           // Since we don't attach the object to the DOM, we search by text match
+           const clickedText = target.innerText;
+           const issue = issues.find(i => i.context === clickedText);
+           if (issue) onFix(issue);
         }
-        return <span key={i}>{part}</span>;
-      })}
-    </div>
+      }}
+    />
   );
 }
