@@ -13,23 +13,22 @@ export default async function AdminDashboard() {
   }
 
   // --- SECURITY CONFIG ---
-  // Updated with your ID
-  const ADMIN_IDS = ["user_36FJn8KEujWD2PbD6360WxqF5i5"]; 
+  const ADMIN_USER_ID = process.env.ADMIN_USER_ID || "";
   
-  // If not admin, show the ID so you can copy it
-  if (!ADMIN_IDS.includes(userId)) {
+  // If not admin, show access denied message
+  if (userId !== ADMIN_USER_ID) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4">
         <div className="bg-white p-8 rounded-xl shadow-lg border border-red-100 max-w-md w-full text-center">
           <div className="text-4xl mb-4">🛡️</div>
           <h1 className="text-xl font-bold text-slate-800 mb-2">Admin Access Required</h1>
           <p className="text-slate-500 mb-6 text-sm">
-            To enable this dashboard, add your User ID to the <code>ADMIN_IDS</code> array in <code>src/app/admin/page.tsx</code> and <code>src/app/admin/actions.ts</code>.
+            This dashboard is restricted. Ensure <code>ADMIN_USER_ID</code> is set correctly in your environment variables.
           </p>
           <div className="bg-slate-100 p-3 rounded-lg border border-slate-200 font-mono text-xs text-slate-600 break-all select-all">
             {userId}
           </div>
-          <p className="mt-2 text-xs text-slate-400">^ Copy this ID</p>
+          <p className="mt-2 text-xs text-slate-400">^ Your Current ID</p>
         </div>
       </div>
     );

@@ -1,137 +1,62 @@
 [
-  {
-    "term": "ninja",
-    "category": "vague",
-    "reason": "Vague job title. Use a standard industry title for better SEO."
-  },
-  {
-    "term": "guru",
-    "category": "vague",
-    "reason": "Vague job title. Use a standard industry title for better SEO."
-  },
-  {
-    "term": "rockstar",
-    "category": "vague",
-    "reason": "Vague job title. Often implies unrealistic expectations."
-  },
-  {
-    "term": "recent graduate",
-    "category": "legal",
-    "reason": "Age discrimination risk. Focus on skills, not graduation date."
-  },
-  {
-    "term": "digital native",
-    "category": "legal",
-    "reason": "Age discrimination risk. Implies a preference for younger candidates."
-  },
-  {
-    "term": "young",
-    "category": "legal",
-    "reason": "Age discrimination risk. Avoid referring to age."
-  },
-  {
-    "term": "energetic",
-    "category": "legal",
-    "reason": "Can be flagged as code for 'young'. Use 'motivated' instead."
-  },
-  {
-    "term": "lift 25 lbs",
-    "category": "legal",
-    "reason": "ADA Risk. Only include if strictly essential. Consider 'move' instead of 'lift'."
-  },
-  {
-    "term": "carry 50 lbs",
-    "category": "legal",
-    "reason": "ADA Risk. Only include if strictly essential."
-  },
-  {
-    "term": "stand for long periods",
-    "category": "legal",
-    "reason": "ADA Risk. Focus on the outcome, not the physical method."
-  },
-  {
-    "term": "able-bodied",
-    "category": "legal",
-    "reason": "ADA Risk. Highly exclusionary language."
-  },
-  {
-    "term": "clean shaven",
-    "category": "legal",
-    "reason": "Potential religious or racial discrimination risk."
-  },
-  {
-    "term": "native english speaker",
-    "category": "legal",
-    "reason": "National origin discrimination risk. Use 'Fluent in English'."
-  },
-  {
-    "term": "master",
-    "category": "exclusionary",
-    "reason": "Tech terminology shifting away from master/slave metaphors."
-  },
-  {
-    "term": "slave",
-    "category": "exclusionary",
-    "reason": "Tech terminology shifting away from master/slave metaphors."
-  },
-  {
-    "term": "he/him",
-    "category": "exclusionary",
-    "reason": "Gendered language. Use 'they/them' or 'the candidate'."
-  },
-  {
-    "term": "she/her",
-    "category": "exclusionary",
-    "reason": "Gendered language. Use 'they/them' or 'the candidate'."
-  },
-  {
-    "term": "salesman",
-    "category": "exclusionary",
-    "reason": "Gendered language. Use 'Salesperson'."
-  },
-  {
-    "term": "waitress",
-    "category": "exclusionary",
-    "reason": "Gendered language. Use 'Server'."
-  },
-  {
-    "term": "fast-paced",
-    "category": "toxic",
-    "reason": "Burnout signal. Often implies chaos or understaffing."
-  },
-  {
-    "term": "wear many hats",
-    "category": "toxic",
-    "reason": "Burnout signal. Implies undefined role scope."
-  },
-  {
-    "term": "hustle",
-    "category": "toxic",
-    "reason": "Burnout signal. Implies poor work-life balance."
-  },
-  {
-    "term": "work hard play hard",
-    "category": "toxic",
-    "reason": "Burnout signal. Often used to justify long hours."
-  },
-  {
-    "term": "24/7",
-    "category": "toxic",
-    "reason": "Burnout signal. Implies lack of boundaries."
-  },
-  {
-    "term": "whatever it takes",
-    "category": "toxic",
-    "reason": "Burnout signal. Implies lack of boundaries."
-  },
-  {
-    "term": "thick skin",
-    "category": "toxic",
-    "reason": "Toxic culture signal. Implies abusive management."
-  },
-  {
-    "term": "competitive salary",
-    "category": "warning",
-    "reason": "Vague. Candidates prefer salary ranges. Reduces conversion."
-  }
+  { "term": "ninja", "category": "vague", "reason": "Vague job title. Use a standard industry title for better SEO." },
+  { "term": "guru", "category": "vague", "reason": "Vague job title. Use a standard industry title for better SEO." },
+  { "term": "rockstar", "category": "vague", "reason": "Vague job title. Often implies unrealistic expectations." },
+  { "term": "wizard", "category": "vague", "reason": "Vague job title. Use a standard industry title for better SEO." },
+  { "term": "magician", "category": "vague", "reason": "Vague job title. Use a standard industry title for better SEO." },
+  { "term": "superhero", "category": "vague", "reason": "Vague job title. Implies unrealistic workload." },
+  { "term": "jedi", "category": "vague", "reason": "Vague job title. Use a standard industry title." },
+  { "term": "recent graduate", "category": "legal", "reason": "Age discrimination risk. Focus on skills, not graduation date." },
+  { "term": "digital native", "category": "legal", "reason": "Age discrimination risk. Implies a preference for younger candidates." },
+  { "term": "young", "category": "legal", "reason": "Age discrimination risk. Avoid referring to age." },
+  { "term": "energetic", "category": "legal", "reason": "Can be flagged as code for 'young'. Use 'motivated' instead." },
+  { "term": "lift 25 lbs", "category": "legal", "reason": "ADA Risk. Only include if strictly essential. Consider 'move' instead of 'lift'." },
+  { "term": "carry 50 lbs", "category": "legal", "reason": "ADA Risk. Only include if strictly essential." },
+  { "term": "stand for long periods", "category": "legal", "reason": "ADA Risk. Focus on the outcome, not the physical method." },
+  { "term": "able-bodied", "category": "legal", "reason": "ADA Risk. Highly exclusionary language." },
+  { "term": "clean shaven", "category": "legal", "reason": "Potential religious or racial discrimination risk." },
+  { "term": "native english speaker", "category": "legal", "reason": "National origin discrimination risk. Use 'Fluent in English'." },
+  { "term": "master", "category": "exclusionary", "reason": "Tech terminology shifting away from master/slave metaphors." },
+  { "term": "slave", "category": "exclusionary", "reason": "Tech terminology shifting away from master/slave metaphors." },
+  { "term": "salesman", "category": "exclusionary", "reason": "Gendered language. Use 'Salesperson'." },
+  { "term": "waitress", "category": "exclusionary", "reason": "Gendered language. Use 'Server'." },
+  { "term": "he/him", "category": "exclusionary", "reason": "Gendered language. Use 'they/them' or 'the candidate'." },
+  { "term": "she/her", "category": "exclusionary", "reason": "Gendered language. Use 'they/them' or 'the candidate'." },
+  { "term": "guys", "category": "exclusionary", "reason": "Gendered language. Use 'team' or 'folks'." },
+  { "term": "fast-paced", "category": "toxic", "reason": "Burnout signal. Often implies chaos or understaffing." },
+  { "term": "wear many hats", "category": "toxic", "reason": "Burnout signal. Implies undefined role scope." },
+  { "term": "hustle", "category": "toxic", "reason": "Burnout signal. Implies poor work-life balance." },
+  { "term": "work hard play hard", "category": "toxic", "reason": "Burnout signal. Often used to justify long hours." },
+  { "term": "24/7", "category": "toxic", "reason": "Burnout signal. Implies lack of boundaries." },
+  { "term": "whatever it takes", "category": "toxic", "reason": "Burnout signal. Implies lack of boundaries." },
+  { "term": "thick skin", "category": "toxic", "reason": "Toxic culture signal. Implies abusive management." },
+  { "term": "competitive salary", "category": "warning", "reason": "Vague. Candidates prefer salary ranges. Reduces conversion." },
+  { "term": "10x engineer", "category": "toxic", "reason": "Toxic culture signal. Implies unrealistic workload expectations." },
+  { "term": "unlimited pto", "category": "warning", "reason": "Often viewed skeptically by candidates. Ensure minimums are stated." },
+  { "term": "overqualified", "category": "legal", "reason": "Explicit age discrimination risk." },
+  { "term": "years of experience", "category": "warning", "reason": "Focus on proficiency, not just years (which can filter out capable talent)." },
+  { "term": "culture fit", "category": "warning", "reason": "Can imply bias. Use 'Culture Add' or values alignment." },
+  { "term": "doer", "category": "toxic", "reason": "Often implies lack of strategic support or resources." },
+  { "term": "crush it", "category": "toxic", "reason": "Aggressive language that may alienate diverse candidates." },
+  { "term": "killer", "category": "toxic", "reason": "Aggressive language. Use 'high performer'." },
+  { "term": "aggressive", "category": "toxic", "reason": "Can be read as hostile. Use 'ambitious' or 'driven'." },
+  { "term": "dominant", "category": "toxic", "reason": "Aggressive language. Use 'leading' or 'market leader'." },
+  { "term": "alcohol", "category": "exclusionary", "reason": "Excludes non-drinkers. Focus on social events, not just drinking." },
+  { "term": "beer", "category": "exclusionary", "reason": "Excludes non-drinkers. Focus on social events, not just drinking." },
+  { "term": "foosball", "category": "warning", "reason": "Stereotypical startup perk. Focus on benefits that matter (health, flex time)." },
+  { "term": "ping pong", "category": "warning", "reason": "Stereotypical startup perk. Focus on benefits that matter." },
+  { "term": "family", "category": "toxic", "reason": "Workplace is not family. Implies lack of professional boundaries." },
+  { "term": "blue collar", "category": "warning", "reason": "Can be classist. Use specific industry terms." },
+  { "term": "white collar", "category": "warning", "reason": "Can be classist. Use specific industry terms." },
+  { "term": "ghetto", "category": "legal", "reason": "Racist/Classist term. Never use this." },
+  { "term": "pow wow", "category": "exclusionary", "reason": "Cultural appropriation. Use 'meeting' or 'huddle'." },
+  { "term": "spirit animal", "category": "exclusionary", "reason": "Cultural appropriation. Use 'mascot' or 'favorite animal'." },
+  { "term": "tribe", "category": "exclusionary", "reason": "Cultural appropriation. Use 'team' or 'squad'." },
+  { "term": "bar", "category": "exclusionary", "reason": "Excludes those who cannot enter bars (age/religion). Use 'social venue'." },
+  { "term": "man up", "category": "exclusionary", "reason": "Sexist language. Use 'step up' or 'take ownership'." },
+  { "term": "blacklist", "category": "exclusionary", "reason": "Use 'denylist' instead." },
+  { "term": "whitelist", "category": "exclusionary", "reason": "Use 'allowlist' instead." },
+  { "term": "grandfathered", "category": "exclusionary", "reason": "Historical racial connotation. Use 'legacy' status." },
+  { "term": "manpower", "category": "exclusionary", "reason": "Gendered. Use 'workforce' or 'personnel'." },
+  { "term": "mankind", "category": "exclusionary", "reason": "Gendered. Use 'humanity' or 'people'." }
 ]

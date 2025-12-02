@@ -8,13 +8,13 @@ export default async function Home() {
   const user = await currentUser();
   
   // --- CONFIGURATION ---
-  // Updated with your ID
-  const ADMIN_IDS = ["user_36FJn8KEujWD2PbD6360WxqF5i5"]; 
-  const isAdmin = userId && ADMIN_IDS.includes(userId);
+  // Use environment variable for admin check
+  const ADMIN_USER_ID = process.env.ADMIN_USER_ID || "";
+  const isAdmin = userId && userId === ADMIN_USER_ID;
 
   // Get real user data to pass to the Client Component
-  // Default to 5 credits for new users if metadata is empty
-  const initialCredits = user?.privateMetadata?.credits ?? 5;
+  // Default to 10 credits for new users if metadata is empty (updated per your request for 10)
+  const initialCredits = user?.privateMetadata?.credits ?? 10;
   const initialPlan = user?.privateMetadata?.plan === 'pro' ? 'pro' : 'free';
 
   return (

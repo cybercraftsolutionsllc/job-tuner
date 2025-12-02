@@ -116,6 +116,12 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
   };
 
   const callAI = async (type: "expand" | "rewrite") => {
+    // Check credits immediately before calling
+    if (!initialPlan.includes("pro") && credits <= 0) {
+      setShowUpgradeModal(true);
+      return;
+    }
+
     setIsLoading(true);
     setPreviousDescription(description); // Capture state before change
 
@@ -158,11 +164,12 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
 
   const handleAutoTune = () => {
     if (isProMode) {
-      if (!confirm("Pro Mode: Use 1 Credit to AI rewrite?")) return;
+      // Pro Mode Logic: Call AI
       callAI("rewrite");
     } else {
+      // Basic Mode Logic: Static Fixes (Free)
       const fixed = autoTuneText(description);
-      setPreviousDescription(description); // Capture state before change
+      setPreviousDescription(description); 
       setDescription(fixed);
       setToast("✨ Text Auto-Tuned.");
       setViewMode("edit");
@@ -228,46 +235,18 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
 
       {showUpgradeModal && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full p-8 text-center relative overflow-hidden animate-float">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center relative overflow-hidden animate-float">
               <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-purple-600"></div>
               <button onClick={() => setShowUpgradeModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors">✕</button>
               
-              <div className="text-center mb-8">
-                <div className="mb-2 text-4xl">⚡</div>
-                <h3 className="text-3xl font-bold text-slate-900 mb-2">Upgrade Your Hiring</h3>
-                <p className="text-slate-500">Choose the plan that fits your recruiting volume.</p>
-              </div>
-
-              <div className="grid md:grid-cols-3 gap-6">
-                {/* 100 Credits */}
-                <div className="border border-slate-200 rounded-xl p-6 hover:shadow-lg transition-shadow text-center">
-                  <h4 className="font-bold text-lg text-slate-800">Starter Pack</h4>
-                  <div className="text-3xl font-black text-slate-900 my-4">$9.99</div>
-                  <div className="text-sm font-medium text-slate-500 mb-6">100 Credits</div>
-                  <a href={process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK_100 || "#"} target="_blank" className="block w-full py-2 rounded-lg bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 transition-colors">Buy Now</a>
-                </div>
-
-                {/* 500 Credits - Highlighted */}
-                <div className="border-2 border-indigo-500 rounded-xl p-6 shadow-xl relative text-center bg-indigo-50/10">
-                  <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-indigo-500 text-white text-[10px] uppercase font-bold px-3 py-1 rounded-full tracking-wide">Best Value</div>
-                  <h4 className="font-bold text-lg text-indigo-900">Power Recruiter</h4>
-                  <div className="text-3xl font-black text-slate-900 my-4">$39.99</div>
-                  <div className="text-sm font-medium text-slate-500 mb-6">500 Credits</div>
-                  <a href={process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK_500 || "#"} target="_blank" className="block w-full py-2 rounded-lg bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-colors shadow-lg">Buy Now</a>
-                </div>
-
-                {/* Annual Pro */}
-                <div className="border border-slate-200 rounded-xl p-6 hover:shadow-lg transition-shadow text-center">
-                  <h4 className="font-bold text-lg text-slate-800">Annual Pro</h4>
-                  <div className="text-3xl font-black text-slate-900 my-4">$499</div>
-                  <div className="text-sm font-medium text-slate-500 mb-6">Unlimited / Year</div>
-                  <a href={process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK_ANNUAL || "#"} target="_blank" className="block w-full py-2 rounded-lg bg-slate-900 text-white font-bold hover:bg-slate-700 transition-colors">Go Unlimited</a>
-                </div>
-              </div>
+              <div className="mb-4 text-4xl">⚡</div>
+              <h3 className="text-2xl font-bold text-slate-800 mb-2">Upgrade to Pro</h3>
+              <p className="text-slate-600 mb-6">Unlimited rewrites, advanced tones, and premium support.</p>
               
-              <div className="mt-8 text-center">
-                <button onClick={() => setShowUpgradeModal(false)} className="text-sm text-slate-400 hover:text-slate-600 underline">Maybe later</button>
-              </div>
+              <a href={process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK || "#"} target="_blank" rel="noopener noreferrer" className="block w-full py-3.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 mb-4" onClick={() => setTimeout(() => setShowUpgradeModal(false), 2000)}>
+                  Buy 100 Credits - $19
+              </a>
+              <button onClick={() => setShowUpgradeModal(false)} className="text-sm text-slate-400 hover:text-slate-600 underline">No thanks</button>
           </div>
         </div>
       )}
@@ -279,7 +258,6 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
           <div className="flex bg-slate-100/50 p-1 rounded-lg w-full xl:w-auto backdrop-blur-sm">
             <button onClick={() => setViewMode("edit")} className={`flex-1 xl:flex-none px-4 py-1.5 text-sm font-semibold rounded-md transition-all duration-300 ${viewMode === "edit" ? "bg-white text-blue-600 shadow-md" : "text-slate-500 hover:text-slate-700"}`}>✏️ Write</button>
             <button onClick={() => setViewMode("audit")} disabled={!report} className={`flex-1 xl:flex-none px-4 py-1.5 text-sm font-semibold rounded-md transition-all duration-300 ${viewMode === "audit" ? "bg-white text-blue-600 shadow-md" : "text-slate-500 hover:text-slate-700 disabled:opacity-50"} ${report && report.issues.length > 0 ? 'animate-pulse text-rose-500' : ''}`}>👁️ Audit View</button>
-            <button onClick={() => setViewMode("diff")} disabled={!previousDescription} className={`flex-1 xl:flex-none px-4 py-1.5 text-sm font-semibold rounded-md transition-all duration-300 ${viewMode === "diff" ? "bg-white text-blue-600 shadow-md" : "text-slate-500 hover:text-slate-700 disabled:opacity-50"}`}>⚖️ Changes</button>
           </div>
 
           <div className="flex flex-wrap justify-center items-center gap-2 w-full xl:w-auto">
@@ -302,11 +280,15 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
                 {isProMode ? "🤖 Expand" : "➕ Expand"}
              </button>
              
-             <button onClick={handleAutoTune} disabled={description.length < 10} className={`px-3 py-1.5 rounded text-xs font-bold shadow-sm transition-all duration-300 flex items-center gap-1 disabled:opacity-50 ${isProMode ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700" : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700"}`}>
-                {isProMode ? "✨ Rewrite" : "✨ Fix"}
+             <button 
+                onClick={handleAutoTune} 
+                disabled={description.length < 10} 
+                className={`px-3 py-1.5 rounded text-xs font-bold shadow-sm transition-all duration-300 flex items-center gap-1 disabled:opacity-50 ${isProMode ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700" : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700"}`}
+             >
+                {isProMode ? "✨ Rewrite (1 Credit)" : "✨ Auto-Tune"}
              </button>
 
-             <button onClick={() => setShowUpgradeModal(true)} className="px-3 py-1.5 rounded text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200 transition-colors flex items-center gap-1">
+             <button onClick={() => setShowUpgradeModal(true)} className="px-3 py-1.5 rounded text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-200 transition-colors flex items-center gap-1" title="1 Credit = 1 AI Rewrite">
                 ⚡ {credits}
              </button>
 
@@ -329,14 +311,10 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
              <div className="px-6 pt-4 pb-2 flex justify-between items-end"><label className="block text-xs font-bold text-slate-400 uppercase tracking-wide">Job Description</label></div>
              {viewMode === "edit" ? (
                <textarea className="w-full h-full p-6 resize-none focus:outline-none text-slate-700 leading-relaxed font-sans placeholder-slate-300 text-base bg-transparent" placeholder="Paste your JD here..." value={description} onChange={(e) => setDescription(e.target.value)} />
-             ) : viewMode === "audit" ? (
+             ) : (
                <div className="w-full h-full p-6 overflow-y-auto bg-slate-50/50">
                  <TextHighlighter text={description} issues={report?.issues || []} onFix={handleFixIssue} />
                </div>
-             ) : (
-                <div className="w-full h-full p-6 overflow-y-auto bg-slate-50/50">
-                  <DiffViewer oldText={previousDescription} newText={description} />
-                </div>
              )}
            </div>
         </div>
