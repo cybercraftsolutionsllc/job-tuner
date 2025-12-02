@@ -117,7 +117,7 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
 
   const callAI = async (type: "expand" | "rewrite") => {
     setIsLoading(true);
-    setPreviousDescription(description);
+    setPreviousDescription(description); // Capture state before change
 
     try {
       const res = await fetch("/api/ai-tune", {
@@ -146,7 +146,7 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
       } else {
         setDescription(cleanResult);
         setToast(`🤖 Rewrite Complete!`);
-        setViewMode("diff");
+        setViewMode("diff"); // Auto-switch to diff mode to show value
       }
     } catch (error) {
       console.error(error);
@@ -162,7 +162,7 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
       callAI("rewrite");
     } else {
       const fixed = autoTuneText(description);
-      setPreviousDescription(description);
+      setPreviousDescription(description); // Capture state before change
       setDescription(fixed);
       setToast("✨ Text Auto-Tuned.");
       setViewMode("edit");
@@ -187,7 +187,6 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
   const handleExportPDF = () => { if(title || description) { downloadPDF(title, description); setToast("📄 PDF Downloading..."); } };
   const handleLoadSample = () => { setTitle(SAMPLE_TITLE); setDescription(SAMPLE_DESC.trim()); setViewMode("audit"); };
   
-  // Define handleInsertTemplate BEFORE it is used in the return statement
   const handleInsertTemplate = () => { 
     if (description.length > 50 && !confirm("Overwrite text?")) return; 
     setTitle("Senior [Role Name]"); 
