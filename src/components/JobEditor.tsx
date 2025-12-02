@@ -6,6 +6,7 @@ import { analyzeJobDescription, ScoreReport, Issue } from "../utils/optimizer";
 import { autoTuneText, GOLD_STANDARD_TEMPLATE, getSuggestionsForTitle } from "../utils/fixer";
 import { downloadPDF, shareViaEmail } from "../utils/exporter";
 import TextHighlighter from "./TextHighlighter";
+import DiffViewer from "./DiffViewer";
 import { TONE_PROFILES, ToneKey } from "../utils/constants";
 
 // Dictionary for manual fixes (Simplified version of fixer.ts logic)
@@ -44,8 +45,9 @@ interface JobEditorProps {
 export default function JobEditor({ initialCredits, initialPlan }: JobEditorProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [previousDescription, setPreviousDescription] = useState("");
   const [report, setReport] = useState<ScoreReport | null>(null);
-  const [viewMode, setViewMode] = useState<"edit" | "audit">("edit");
+  const [viewMode, setViewMode] = useState<"edit" | "audit" | "diff">("edit");
   const [toast, setToast] = useState<string | null>(null);
   const [tone, setTone] = useState<ToneKey>("professional");
   const [isProMode, setIsProMode] = useState(false);
@@ -115,6 +117,8 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
 
   const callAI = async (type: "expand" | "rewrite") => {
     setIsLoading(true);
+    setPreviousDescription(description);
+
     try {
       const res = await fetch("/api/ai-tune", {
         method: "POST",
@@ -131,6 +135,7 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
 
       let cleanResult = data.result.replace(/##/g, "").replace(/\n\n\n/g, "\n\n");
       
+      // Update credits only if remainingCredits is a valid number
       if (typeof data.remainingCredits === 'number') {
         setCredits(data.remainingCredits);
       }
@@ -141,13 +146,13 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
       } else {
         setDescription(cleanResult);
         setToast(`🤖 Rewrite Complete!`);
+        setViewMode("diff");
       }
     } catch (error) {
       console.error(error);
       setToast("❌ System Error. Please try again.");
     } finally {
       setIsLoading(false);
-      setViewMode("edit");
     }
   };
 
@@ -157,6 +162,7 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
       callAI("rewrite");
     } else {
       const fixed = autoTuneText(description);
+      setPreviousDescription(description);
       setDescription(fixed);
       setToast("✨ Text Auto-Tuned.");
       setViewMode("edit");
@@ -181,6 +187,7 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
   const handleExportPDF = () => { if(title || description) { downloadPDF(title, description); setToast("📄 PDF Downloading..."); } };
   const handleLoadSample = () => { setTitle(SAMPLE_TITLE); setDescription(SAMPLE_DESC.trim()); setViewMode("audit"); };
   
+  // Define handleInsertTemplate BEFORE it is used in the return statement
   const handleInsertTemplate = () => { 
     if (description.length > 50 && !confirm("Overwrite text?")) return; 
     setTitle("Senior [Role Name]"); 
@@ -222,18 +229,46 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
 
       {showUpgradeModal && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center relative overflow-hidden animate-float">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full p-8 text-center relative overflow-hidden animate-float">
               <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-purple-600"></div>
               <button onClick={() => setShowUpgradeModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors">✕</button>
               
-              <div className="mb-4 text-4xl">⚡</div>
-              <h3 className="text-2xl font-bold text-slate-800 mb-2">Upgrade to Pro</h3>
-              <p className="text-slate-600 mb-6">Unlimited rewrites, advanced tones, and premium support.</p>
+              <div className="text-center mb-8">
+                <div className="mb-2 text-4xl">⚡</div>
+                <h3 className="text-3xl font-bold text-slate-900 mb-2">Upgrade Your Hiring</h3>
+                <p className="text-slate-500">Choose the plan that fits your recruiting volume.</p>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-6">
+                {/* 100 Credits */}
+                <div className="border border-slate-200 rounded-xl p-6 hover:shadow-lg transition-shadow text-center">
+                  <h4 className="font-bold text-lg text-slate-800">Starter Pack</h4>
+                  <div className="text-3xl font-black text-slate-900 my-4">$9.99</div>
+                  <div className="text-sm font-medium text-slate-500 mb-6">100 Credits</div>
+                  <a href={process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK_100 || "#"} target="_blank" className="block w-full py-2 rounded-lg bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 transition-colors">Buy Now</a>
+                </div>
+
+                {/* 500 Credits - Highlighted */}
+                <div className="border-2 border-indigo-500 rounded-xl p-6 shadow-xl relative text-center bg-indigo-50/10">
+                  <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-indigo-500 text-white text-[10px] uppercase font-bold px-3 py-1 rounded-full tracking-wide">Best Value</div>
+                  <h4 className="font-bold text-lg text-indigo-900">Power Recruiter</h4>
+                  <div className="text-3xl font-black text-slate-900 my-4">$39.99</div>
+                  <div className="text-sm font-medium text-slate-500 mb-6">500 Credits</div>
+                  <a href={process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK_500 || "#"} target="_blank" className="block w-full py-2 rounded-lg bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-colors shadow-lg">Buy Now</a>
+                </div>
+
+                {/* Annual Pro */}
+                <div className="border border-slate-200 rounded-xl p-6 hover:shadow-lg transition-shadow text-center">
+                  <h4 className="font-bold text-lg text-slate-800">Annual Pro</h4>
+                  <div className="text-3xl font-black text-slate-900 my-4">$499</div>
+                  <div className="text-sm font-medium text-slate-500 mb-6">Unlimited / Year</div>
+                  <a href={process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK_ANNUAL || "#"} target="_blank" className="block w-full py-2 rounded-lg bg-slate-900 text-white font-bold hover:bg-slate-700 transition-colors">Go Unlimited</a>
+                </div>
+              </div>
               
-              <a href={process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK || "#"} target="_blank" rel="noopener noreferrer" className="block w-full py-3.5 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 mb-4" onClick={() => setTimeout(() => setShowUpgradeModal(false), 2000)}>
-                  Buy 100 Credits - $19
-              </a>
-              <button onClick={() => setShowUpgradeModal(false)} className="text-sm text-slate-400 hover:text-slate-600 underline">No thanks</button>
+              <div className="mt-8 text-center">
+                <button onClick={() => setShowUpgradeModal(false)} className="text-sm text-slate-400 hover:text-slate-600 underline">Maybe later</button>
+              </div>
           </div>
         </div>
       )}
@@ -245,6 +280,7 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
           <div className="flex bg-slate-100/50 p-1 rounded-lg w-full xl:w-auto backdrop-blur-sm">
             <button onClick={() => setViewMode("edit")} className={`flex-1 xl:flex-none px-4 py-1.5 text-sm font-semibold rounded-md transition-all duration-300 ${viewMode === "edit" ? "bg-white text-blue-600 shadow-md" : "text-slate-500 hover:text-slate-700"}`}>✏️ Write</button>
             <button onClick={() => setViewMode("audit")} disabled={!report} className={`flex-1 xl:flex-none px-4 py-1.5 text-sm font-semibold rounded-md transition-all duration-300 ${viewMode === "audit" ? "bg-white text-blue-600 shadow-md" : "text-slate-500 hover:text-slate-700 disabled:opacity-50"} ${report && report.issues.length > 0 ? 'animate-pulse text-rose-500' : ''}`}>👁️ Audit View</button>
+            <button onClick={() => setViewMode("diff")} disabled={!previousDescription} className={`flex-1 xl:flex-none px-4 py-1.5 text-sm font-semibold rounded-md transition-all duration-300 ${viewMode === "diff" ? "bg-white text-blue-600 shadow-md" : "text-slate-500 hover:text-slate-700 disabled:opacity-50"}`}>⚖️ Changes</button>
           </div>
 
           <div className="flex flex-wrap justify-center items-center gap-2 w-full xl:w-auto">
@@ -294,11 +330,14 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
              <div className="px-6 pt-4 pb-2 flex justify-between items-end"><label className="block text-xs font-bold text-slate-400 uppercase tracking-wide">Job Description</label></div>
              {viewMode === "edit" ? (
                <textarea className="w-full h-full p-6 resize-none focus:outline-none text-slate-700 leading-relaxed font-sans placeholder-slate-300 text-base bg-transparent" placeholder="Paste your JD here..." value={description} onChange={(e) => setDescription(e.target.value)} />
-             ) : (
+             ) : viewMode === "audit" ? (
                <div className="w-full h-full p-6 overflow-y-auto bg-slate-50/50">
-                 {/* Pass the onFix handler here */}
                  <TextHighlighter text={description} issues={report?.issues || []} onFix={handleFixIssue} />
                </div>
+             ) : (
+                <div className="w-full h-full p-6 overflow-y-auto bg-slate-50/50">
+                  <DiffViewer oldText={previousDescription} newText={description} />
+                </div>
              )}
            </div>
         </div>

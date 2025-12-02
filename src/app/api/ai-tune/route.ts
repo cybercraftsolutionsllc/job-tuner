@@ -13,88 +13,107 @@ export async function POST(req: Request) {
     }
 
     const user = await currentUser();
-    const isPro = user?.privateMetadata?.plan === "pro";
-    const currentCredits = user?.privateMetadata?.credits;
+    const client = await clerkClient();
     
-    // Default to 5 credits if not set
-    const credits = currentCredits === undefined ? 5 : Number(currentCredits);
+    // --- RESET LOGIC ---
+    // Check if 30 days have passed since last reset
+    const lastReset = user?.privateMetadata?.lastResetDate ? new Date(user.privateMetadata.lastResetDate as string) : new Date(0);
+    const now = new Date();
+    const daysSinceReset = (now.getTime() - lastReset.getTime()) / (1000 * 3600 * 24);
 
-    // Hard gate: If not pro and out of credits, stop.
-    if (!isPro && credits <= 0) {
+    let currentCredits = Number(user?.privateMetadata?.credits ?? 10); // Default to 10
+    
+    // If > 30 days, reset free tier users to 10 credits (if they have less than 10)
+    // We don't want to wipe purchased credits, so complex logic might be needed for real apps.
+    // For this MVP: We just ensure they have at least 10 every month.
+    if (daysSinceReset > 30) {
+      if (currentCredits < 10) {
+        currentCredits = 10;
+        await client.users.updateUserMetadata(userId, {
+          privateMetadata: {
+            credits: 10,
+            lastResetDate: now.toISOString()
+          }
+        });
+      }
+    }
+
+    const isPro = user?.privateMetadata?.plan === "pro";
+
+    if (!isPro && currentCredits <= 0) {
       return NextResponse.json({ 
         error: "OUT_OF_CREDITS", 
-        message: "You have used all your free AI credits." 
+        message: "You have used all your free credits. Upgrade to continue." 
       }, { status: 403 });
     }
 
     const { title, currentText, type, tone } = await req.json();
     
-    // Future-Proofing: Validate tone against our constants
-    // If 'tone' is missing or invalid, default to 'professional'
+    // Pro users get GPT-4o, Free get 3.5
+    const model = isPro ? "gpt-4o" : "gpt-3.5-turbo";
+
     const toneKey = (tone && TONE_PROFILES[tone as ToneKey]) ? (tone as ToneKey) : 'professional';
     const selectedTonePrompt = TONE_PROFILES[toneKey].prompt;
 
     const systemPrompt = `
-      You are a Senior Technical Recruiter and Copywriter at a top-tier company.
+      You are an expert Senior Technical Recruiter.
       ${selectedTonePrompt}
       
-      Your Core Rules:
-      1. **Candidate-Centric**: Use "You" more than "We". Sell the opportunity.
-      2. **Bias-Free**: STRICTLY avoid gendered language (e.g., "salesman", "guys") and toxic phrases (e.g., "rockstar", "hustle").
-      3. **Formatting**: Use Markdown headers (##) and bullet points for readability.
-      4. **SEO Optimized**: Ensure the job title appears naturally in the first 2 sentences.
+      Your Goal: Transform the input into a high-converting, bias-free Job Description.
+      
+      Rules:
+      1. Use "You" (candidate focus) vs "We" (company focus) at a 4:1 ratio.
+      2. No "Ninja/Rockstar" terms. Use "Specialist/Lead".
+      3. Use bold headers (**Header**) for structure.
+      4. Keep it concise but persuasive.
     `;
 
     let userPrompt = "";
 
     if (type === "expand") {
       userPrompt = `
-        Context: The role is "${title}".
-        Draft Text: "${currentText.substring(0, 300)}...".
-
-        Task: Generate 6-8 high-impact "Key Responsibilities" bullet points.
-        Requirement: Start every bullet with a strong action verb. Return ONLY the bullets.
+        Role: ${title}
+        Draft: "${currentText.substring(0, 300)}..."
+        
+        Task: Create 6 strong "Key Responsibilities" bullet points.
+        Format: Bullet points only.
       `;
     } else {
       userPrompt = `
-        Rewrite this Job Description for a "${title}" role.
+        Rewrite this JD for a "${title}".
         
-        Original Input:
+        Original:
         "${currentText}"
 
         Structure:
-        1. **The Mission** (Hook the candidate instantly)
-        2. **What You'll Do** (Responsibilities)
-        3. **What You Bring** (Requirements)
-        4. **Why Join Us** (Benefits & Culture)
-
-        Length: 400-500 words.
+        1. **The Opportunity** (Hook)
+        2. **What You'll Do** (Bullets)
+        3. **What You Need** (Bullets)
+        4. **Benefits** (List)
       `;
     }
 
     const completion = await openai.chat.completions.create({
-      model: AI_CONFIG.defaultModel,
+      model: model,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
       ],
-      temperature: AI_CONFIG.temperature,
+      temperature: 0.7,
     });
     
     const result = completion.choices[0].message.content;
 
-    // Only deduct credits if NOT Pro
     if (!isPro) {
-      const client = await clerkClient();
       await client.users.updateUserMetadata(userId, {
         privateMetadata: {
-          credits: credits - 1
+          credits: currentCredits - 1
         }
       });
-      return NextResponse.json({ result, remainingCredits: credits - 1, isPro: false });
+      return NextResponse.json({ result, remainingCredits: currentCredits - 1, isPro: false });
     }
 
-    return NextResponse.json({ result, remainingCredits: credits, isPro: true });
+    return NextResponse.json({ result, remainingCredits: currentCredits, isPro: true });
 
   } catch (error) {
     console.error("AI Error:", error);
