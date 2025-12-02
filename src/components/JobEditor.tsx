@@ -2,11 +2,24 @@
 
 import { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
-import { analyzeJobDescription, ScoreReport } from "../utils/optimizer";
+import { analyzeJobDescription, ScoreReport, Issue } from "../utils/optimizer";
 import { autoTuneText, GOLD_STANDARD_TEMPLATE, getSuggestionsForTitle } from "../utils/fixer";
 import { downloadPDF, shareViaEmail } from "../utils/exporter";
 import TextHighlighter from "./TextHighlighter";
 import { TONE_PROFILES, ToneKey } from "../utils/constants";
+
+// Dictionary for manual fixes (Simplified version of fixer.ts logic)
+const QUICK_FIXES: Record<string, string> = {
+  "ninja": "Specialist",
+  "rockstar": "High Performer",
+  "guru": "Expert",
+  "wizard": "Lead",
+  "hustle": "work efficiently",
+  "guys": "team",
+  "he": "they",
+  "she": "they",
+  "salesman": "Salesperson"
+};
 
 const SAMPLE_TITLE = "Rockstar Ninja Developer Needed ASAP!!!";
 const SAMPLE_DESC = `
@@ -80,6 +93,26 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
     }
   }, [toast]);
 
+  // --- ACTIONS ---
+
+  const handleFixIssue = (issue: Issue) => {
+    if (!issue.context) return;
+    
+    const word = issue.context.toLowerCase();
+    const betterWord = QUICK_FIXES[word];
+
+    if (betterWord) {
+      // Replace the word in the description
+      const regex = new RegExp(`\\b${issue.context}\\b`, "gi");
+      const newDesc = description.replace(regex, betterWord);
+      setDescription(newDesc);
+      setToast(`✨ Fixed: "${issue.context}" → "${betterWord}"`);
+    } else {
+      setToast(`ℹ️ No auto-fix for "${issue.context}". Please edit manually.`);
+      setViewMode("edit"); // Switch to edit mode so they can fix it
+    }
+  };
+
   const callAI = async (type: "expand" | "rewrite") => {
     setIsLoading(true);
     try {
@@ -148,8 +181,6 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
   const handleExportPDF = () => { if(title || description) { downloadPDF(title, description); setToast("📄 PDF Downloading..."); } };
   const handleLoadSample = () => { setTitle(SAMPLE_TITLE); setDescription(SAMPLE_DESC.trim()); setViewMode("audit"); };
   
-  // *** THIS IS THE FUNCTION THAT WAS CAUSING THE ERROR ***
-  // Ensure it is defined before the return statement
   const handleInsertTemplate = () => { 
     if (description.length > 50 && !confirm("Overwrite text?")) return; 
     setTitle("Senior [Role Name]"); 
@@ -265,7 +296,8 @@ export default function JobEditor({ initialCredits, initialPlan }: JobEditorProp
                <textarea className="w-full h-full p-6 resize-none focus:outline-none text-slate-700 leading-relaxed font-sans placeholder-slate-300 text-base bg-transparent" placeholder="Paste your JD here..." value={description} onChange={(e) => setDescription(e.target.value)} />
              ) : (
                <div className="w-full h-full p-6 overflow-y-auto bg-slate-50/50">
-                 <TextHighlighter text={description} issues={report?.issues || []} />
+                 {/* Pass the onFix handler here */}
+                 <TextHighlighter text={description} issues={report?.issues || []} onFix={handleFixIssue} />
                </div>
              )}
            </div>
