@@ -1,91 +1,119 @@
-import Link from "next/link";
+import { clerkClient } from "@clerk/nextjs/server";
+import { toggleProStatus, addCredits } from "./actions";
+import { redirect } from "next/navigation";
+import { auth } from "@clerk/nextjs/server";
 
-export default function FAQ() {
-  return (
-    <main className="min-h-screen bg-slate-50 font-sans text-slate-900">
-      {/* Header */}
-      <nav className="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <span className="text-2xl">⚡</span>
-            <span className="font-bold text-xl tracking-tight text-blue-700">Job Tuner</span>
-          </Link>
-          <div className="flex gap-4">
-            <Link href="/" className="text-sm font-bold text-slate-600 hover:text-blue-600">
-              Back to Editor
-            </Link>
-          </div>
-        </div>
-      </nav>
+export const dynamic = 'force-dynamic';
 
-      <div className="max-w-4xl mx-auto px-6 py-12">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-extrabold text-slate-900 mb-4">Mastering the Job Description</h1>
-          <p className="text-lg text-slate-500 max-w-2xl mx-auto">
-            Job Tuner uses advanced AI to transform generic requirements into compelling, inclusive, and high-converting job posts.
+export default async function AdminDashboard() {
+  const { userId } = await auth();
+  
+  if (!userId) {
+    redirect("/"); // Send to home if not logged in at all
+  }
+
+  // --- SECURITY CONFIG ---
+  // Updated with your ID
+  const ADMIN_IDS = ["user_36FJn8KEujWD2PbD6360WxqF5i5"]; 
+  
+  // If not admin, show the ID so you can copy it
+  if (!ADMIN_IDS.includes(userId)) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4">
+        <div className="bg-white p-8 rounded-xl shadow-lg border border-red-100 max-w-md w-full text-center">
+          <div className="text-4xl mb-4">🛡️</div>
+          <h1 className="text-xl font-bold text-slate-800 mb-2">Admin Access Required</h1>
+          <p className="text-slate-500 mb-6 text-sm">
+            To enable this dashboard, add your User ID to the <code>ADMIN_IDS</code> array in <code>src/app/admin/page.tsx</code> and <code>src/app/admin/actions.ts</code>.
           </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-8 mb-12">
-          
-          {/* Feature 1 */}
-          <section className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
-            <div className="bg-blue-100 w-12 h-12 rounded-lg flex items-center justify-center text-2xl mb-4">🎨</div>
-            <h2 className="text-xl font-bold text-slate-900 mb-2">Tone & Voice Engine</h2>
-            <p className="text-slate-600 leading-relaxed mb-4">
-              Recruiting for a bank is different from recruiting for a startup. Use our **Pro Tones** to match your company culture:
-            </p>
-            <ul className="space-y-2 text-sm text-slate-500">
-              <li className="flex gap-2 items-center"><span className="text-xl">🚀</span> <span><strong>Startup:</strong> High energy, mission-driven.</span></li>
-              <li className="flex gap-2 items-center"><span className="text-xl">👔</span> <span><strong>Corporate:</strong> Polished, professional, structured.</span></li>
-              <li className="flex gap-2 items-center"><span className="text-xl">🤝</span> <span><strong>Inclusive:</strong> Focus on belonging and culture.</span></li>
-            </ul>
-          </section>
-
-          {/* Feature 2 */}
-          <section className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
-            <div className="bg-emerald-100 w-12 h-12 rounded-lg flex items-center justify-center text-2xl mb-4">⚡</div>
-            <h2 className="text-xl font-bold text-slate-900 mb-2">The Credit System</h2>
-            <p className="text-slate-600 leading-relaxed mb-4">
-              We believe in fair pricing. You get **5 Free Credits** to try the AI.
-            </p>
-            <ul className="space-y-2 text-sm text-slate-500">
-              <li className="flex gap-2 items-center"><span className="text-xl">✨</span> <span><strong>1 Credit</strong> = 1 Full AI Rewrite or Expansion.</span></li>
-              <li className="flex gap-2 items-center"><span className="text-xl">🔄</span> <span><strong>Free</strong> = Basic "Auto-Tune" (Grammar & Bias Swaps).</span></li>
-              <li className="flex gap-2 items-center"><span className="text-xl">💎</span> <span><strong>Pro Plan</strong> = Unlimited generations & premium tones.</span></li>
-            </ul>
-          </section>
-        </div>
-
-        <div className="space-y-8">
-          <section className="bg-slate-900 text-white p-8 rounded-2xl shadow-lg">
-            <h2 className="text-2xl font-bold mb-6">How Scoring Works</h2>
-            <div className="grid md:grid-cols-3 gap-6">
-              <div className="bg-slate-800/50 p-4 rounded-xl">
-                <span className="text-blue-400 font-bold tracking-wider text-xs uppercase block mb-2">SEO Score</span>
-                <p className="text-slate-300 text-sm">Checks keyword density and title clarity. Ensures your job appears in Google Jobs searches.</p>
-              </div>
-              <div className="bg-slate-800/50 p-4 rounded-xl">
-                <span className="text-amber-400 font-bold tracking-wider text-xs uppercase block mb-2">Readability</span>
-                <p className="text-slate-300 text-sm">Flags "walls of text" and self-centered language ("We" vs "You"). Candidates scan JDs in 6 seconds.</p>
-              </div>
-              <div className="bg-slate-800/50 p-4 rounded-xl">
-                <span className="text-rose-400 font-bold tracking-wider text-xs uppercase block mb-2">Risk Audit</span>
-                <p className="text-slate-300 text-sm">Detects gendered language, ageism, and toxic "hustle culture" signals that create liability.</p>
-              </div>
-            </div>
-          </section>
-
-           {/* Call to Action */}
-           <div className="text-center py-12">
-            <h3 className="text-2xl font-bold text-slate-900 mb-4">Ready to write your best JD?</h3>
-            <Link href="/" className="inline-flex items-center justify-center bg-blue-600 text-white font-bold py-4 px-10 rounded-full hover:bg-blue-700 transition-all transform hover:scale-105 shadow-xl hover:shadow-2xl">
-              Go to Editor
-            </Link>
+          <div className="bg-slate-100 p-3 rounded-lg border border-slate-200 font-mono text-xs text-slate-600 break-all select-all">
+            {userId}
           </div>
-
+          <p className="mt-2 text-xs text-slate-400">^ Copy this ID</p>
         </div>
       </div>
-    </main>
+    );
+  }
+
+  const client = await clerkClient();
+  const response = await client.users.getUserList({ 
+    limit: 50,
+    orderBy: '-created_at' 
+  });
+  
+  const users = response.data;
+
+  return (
+    <div className="min-h-screen bg-slate-50 p-8 font-sans text-slate-900">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-extrabold text-slate-800">Admin Dashboard</h1>
+            <p className="text-slate-500 mt-1">Manage user plans and credits.</p>
+          </div>
+          <div className="bg-blue-100 text-blue-800 px-4 py-2 rounded-lg text-sm font-medium border border-blue-200">
+            Admin Mode Active
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">User</th>
+                  <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Plan</th>
+                  <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Credits</th>
+                  <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {users.map((user) => {
+                  const isPro = user.privateMetadata.plan === "pro";
+                  const credits = user.privateMetadata.credits ?? 5;
+                  const email = user.emailAddresses[0]?.emailAddress || "No Email";
+
+                  return (
+                    <tr key={user.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <img src={user.imageUrl} alt="" className="w-8 h-8 rounded-full border border-slate-200" />
+                          <div>
+                            <div className="font-semibold text-sm text-slate-900">{user.firstName} {user.lastName}</div>
+                            <div className="text-xs text-slate-500 font-mono">{email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        {isPro ? (
+                          <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-bold border border-purple-200">PRO</span>
+                        ) : (
+                          <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-bold border border-slate-200">FREE</span>
+                        )}
+                      </td>
+                      <td className="p-4 font-mono text-sm font-medium">{credits as number}</td>
+                      <td className="p-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          <form action={toggleProStatus.bind(null, user.id, isPro)}>
+                            <button className="px-3 py-1 text-xs font-medium border border-slate-300 rounded hover:bg-white hover:text-slate-900 transition-colors">
+                              {isPro ? "Downgrade" : "Make Pro"}
+                            </button>
+                          </form>
+                          <form action={addCredits.bind(null, user.id, 50)}>
+                            <button className="px-3 py-1 text-xs font-medium bg-white text-blue-600 border border-blue-200 rounded hover:bg-blue-50 transition-colors">
+                              +50 Credits
+                            </button>
+                          </form>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

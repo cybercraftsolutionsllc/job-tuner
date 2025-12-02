@@ -8,8 +8,8 @@ export default async function Home() {
   const user = await currentUser();
   
   // --- CONFIGURATION ---
-  // Replace with your actual Clerk User ID to see the Admin link
-  const ADMIN_IDS = ["user_2tPZqX9Jq0qX9Jq0qX9Jq0qX9J"]; 
+  // Updated with your ID
+  const ADMIN_IDS = ["user_36FJn8KEujWD2PbD6360WxqF5i5"]; 
   const isAdmin = userId && ADMIN_IDS.includes(userId);
 
   // Get real user data to pass to the Client Component

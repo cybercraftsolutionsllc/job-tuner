@@ -5,11 +5,9 @@ import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 
 // --- CONFIGURATION ---
-// 1. Visit /admin in your browser.
-// 2. If you see "Access Denied", copy the User ID displayed there.
-// 3. Paste it into this array.
+// Replaced with your verified User ID
 const ADMIN_USER_IDS = [
-  "user_36FJn8KEujWD2PbD6360WxqF5i5", // Replace this with your ID
+  "user_36FJn8KEujWD2PbD6360WxqF5i5", 
 ];
 
 async function checkAdmin() {
